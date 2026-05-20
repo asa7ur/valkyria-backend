@@ -240,12 +240,13 @@ public class OrderService {
                 totalPrice = totalPrice.add(type.getPrice());
                 logger.debug("Precio acumulado después de ticket {}: {} €", ticketIndex, totalPrice);
 
-                // 1.7: Decrementar stock y persistir
-                int newStock = type.getStockAvailable() - 1;
-                type.setStockAvailable(newStock);
-                ticketTypeRepository.save(type);
-                logger.info("Stock actualizado para '{}': {} -> {}",
-                        type.getName(), newStock + 1, newStock);
+                // 1.7: Decrementar stock atómicamente y persistir
+                int updatedRows = ticketTypeRepository.decrementStock(type.getId());
+                if (updatedRows == 0) {
+                    logger.error("Condición de carrera: Sin stock disponible para ticket tipo: {}", type.getName());
+                    throw new AppException("msg.error.no-stock", type.getName());
+                }
+                logger.info("Stock actualizado atómicamente para '{}'", type.getName());
             }
 
             logger.info("Todos los tickets procesados exitosamente. Total tickets: {}",
@@ -298,12 +299,13 @@ public class OrderService {
                 logger.debug("Precio acumulado después de camping {}: {} €",
                         campingIndex, totalPrice);
 
-                // 2.7: Decrementar stock y persistir
-                int newStock = type.getStockAvailable() - 1;
-                type.setStockAvailable(newStock);
-                campingTypeRepository.save(type);
-                logger.info("Stock actualizado para '{}': {} -> {}",
-                        type.getName(), newStock + 1, newStock);
+                // 2.7: Decrementar stock atómicamente y persistir
+                int updatedRows = campingTypeRepository.decrementStock(type.getId());
+                if (updatedRows == 0) {
+                    logger.error("Condición de carrera: Sin stock disponible para camping tipo: {}", type.getName());
+                    throw new AppException("msg.error.no-stock", type.getName());
+                }
+                logger.info("Stock actualizado atómicamente para '{}'", type.getName());
             }
 
             logger.info("Todos los campings procesados exitosamente. Total campings: {}",

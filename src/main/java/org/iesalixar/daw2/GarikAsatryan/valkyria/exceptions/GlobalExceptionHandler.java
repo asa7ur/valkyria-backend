@@ -89,7 +89,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Método privado de utilidad para obtener mensajes traducidos de forma limpia. [Mejora]
+     * Método privado de utilidad para obtener mensajes traducidos de forma limpia.
      */
     private String getMessage(String key, Object[] args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
