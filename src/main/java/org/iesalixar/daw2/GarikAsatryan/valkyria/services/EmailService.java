@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.text.MessageFormat;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +48,7 @@ public class EmailService {
         String confirmationUrl = frontendUrl + "/confirm-registration?token=" + token;
 
         // El logo debe cargarse desde el servidor de Spring Boot
-        String logoUrl = backendUrl + "/uploads/logo.png";
+        String logoUrl = getLogoAsBase64();
 
         // 2. Preparar el contexto de Thymeleaf (las variables que usa el HTML)
         // context.setVariable("nombre_en_html", valor_en_java)
@@ -88,7 +90,7 @@ public class EmailService {
 
         String to = (order.getUser() != null) ? order.getUser().getEmail() : order.getGuestEmail();
         String firstName = (order.getUser() != null) ? order.getUser().getFirstName() : "Invitado";
-        String logoUrl = backendUrl + "/uploads/logo.png";
+        String logoUrl = getLogoAsBase64();
 
         // 1. Preparar el contexto de Thymeleaf
         Context context = new Context(LocaleContextHolder.getLocale());
@@ -122,5 +124,15 @@ public class EmailService {
 
     private String getMessage(String key, Object[] args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+
+    private String getLogoAsBase64() {
+        try {
+            byte[] bytes = new ClassPathResource("logo.png").getInputStream().readAllBytes();
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes);
+        } catch (Exception e) {
+            logger.warn("No se pudo cargar el logo desde el classpath: {}", e.getMessage());
+            return "";
+        }
     }
 }
