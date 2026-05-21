@@ -21,6 +21,7 @@ public class OrderDTO {
     private BigDecimal totalPrice;
     private OrderStatus status;
     private String guestEmail;
+    private String userEmail;
     private List<TicketDTO> tickets;
     private List<CampingDTO> campings;
 }

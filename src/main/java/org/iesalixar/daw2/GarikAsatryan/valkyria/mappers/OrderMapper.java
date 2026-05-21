@@ -3,6 +3,7 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.mappers;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.OrderDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Order;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public interface OrderMapper {
      * Automáticamente convertirá List<Ticket> -> List<TicketDTO>
      * y List<Camping> -> List<CampingDTO> gracias a los mappers en 'uses'.
      */
+    @Mapping(source = "user.email", target = "userEmail")
     OrderDTO toDTO(Order entity);
 
     /**
