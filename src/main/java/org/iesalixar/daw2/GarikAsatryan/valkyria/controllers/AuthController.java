@@ -2,6 +2,7 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AuthRequestDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AuthResponseDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserRegistrationDTO;
@@ -119,6 +120,12 @@ public class AuthController {
                     response.put("error", "Invalid token");
                     return ResponseEntity.badRequest().body(response);
                 });
+    }
+
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<AuthResponseDTO> handleAppException(AppException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(new AuthResponseDTO(null, "Error: " + e.getMessageKey()));
     }
 
     @ExceptionHandler(Exception.class)
