@@ -32,9 +32,6 @@ public class EmailService {
     @Value("${app.url}")
     private String frontendUrl;
 
-    @Value("${app.backend.url}")
-    private String backendUrl;
-
     @Value("${spring.mail.username}")
     private String mailFrom;
 
@@ -47,7 +44,6 @@ public class EmailService {
         // El enlace de activación debe llevar al usuario a Angular
         String confirmationUrl = frontendUrl + "/confirm-registration?token=" + token;
 
-        // El logo debe cargarse desde el servidor de Spring Boot
         String logoUrl = getLogoAsBase64();
 
         // 2. Preparar el contexto de Thymeleaf (las variables que usa el HTML)

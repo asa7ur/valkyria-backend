@@ -6,14 +6,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.Modifying;
 
 public interface CampingTypeRepository extends JpaRepository<CampingType, Long> {
     @Query("SELECT c FROM CampingType c WHERE " +
             "LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ")
     Page<CampingType> searchCampingTypes(@Param("searchTerm") String searchTerm, Pageable pageable);
-
-    @Modifying
-    @Query("UPDATE CampingType c SET c.stockAvailable = c.stockAvailable - 1 WHERE c.id = :id AND c.stockAvailable > 0")
-    int decrementStock(@Param("id") Long id);
 }
