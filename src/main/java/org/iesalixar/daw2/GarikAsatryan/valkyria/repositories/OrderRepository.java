@@ -17,7 +17,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             "LOWER(o.status) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Order> searchOrders(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    List<Order> findByUserEmailOrderByOrderDateDesc(String email);
+    @Query("SELECT o FROM Order o JOIN FETCH o.user WHERE o.user.email = :email ORDER BY o.orderDate DESC")
+    List<Order> findByUserEmailOrderByOrderDateDesc(@Param("email") String email);
 
     @Query("SELECT CAST(o.orderDate AS date), SUM(o.totalPrice) " +
            "FROM Order o WHERE o.status = 'PAID' " +
