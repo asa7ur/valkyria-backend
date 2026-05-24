@@ -1,7 +1,7 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.stripe.Stripe;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -251,7 +251,7 @@ public class PaymentService {
                         JsonNode node = objectMapper.readTree(dataObjectDeserializer.getRawJson());
 
                         if (node.has("client_reference_id")) {
-                            String clientRefId = node.get("client_reference_id").asText();
+                            String clientRefId = node.get("client_reference_id").stringValue();
                             logger.debug("ID extraído mediante parsing JSON: {}", clientRefId);
                             return clientRefId;
                         } else {

@@ -57,7 +57,6 @@ public class PdfGeneratorService {
         // 4. Construcción del PDF
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.useFastMode();
             builder.withHtmlContent(htmlContent, "/");
             builder.toStream(outputStream);
             builder.run();
