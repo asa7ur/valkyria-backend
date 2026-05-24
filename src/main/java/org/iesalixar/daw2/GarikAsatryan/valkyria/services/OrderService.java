@@ -86,6 +86,7 @@ public class OrderService {
      * @param email Email del usuario
      * @return Lista de DTOs con todos los pedidos del usuario ordenados cronológicamente
      */
+    @Transactional(readOnly = true)
     public List<OrderDTO> getOrdersByUser(String email) {
         logger.info("Recuperando historial de pedidos para usuario: {}", email);
 
