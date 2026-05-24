@@ -7,8 +7,6 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.CampingDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Camping;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.CampingType;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Ticket;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.TicketType;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.CampingMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.CampingRepository;

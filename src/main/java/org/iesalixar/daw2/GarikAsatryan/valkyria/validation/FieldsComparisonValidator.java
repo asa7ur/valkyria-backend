@@ -28,7 +28,7 @@ public class FieldsComparisonValidator implements ConstraintValidator<FieldsComp
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     private int compareValues(Object first, Object second) {
         if (first instanceof Comparable comparableFirst) {
             return comparableFirst.compareTo(second);

@@ -5,7 +5,6 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketTypeCreateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketTypeDTO;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Ticket;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.TicketType;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.TicketTypeMapper;
