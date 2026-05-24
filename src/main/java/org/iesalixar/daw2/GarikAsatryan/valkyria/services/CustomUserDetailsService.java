@@ -42,12 +42,12 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        logger.debug("Intentando cargar usuario con email: {}", email);
+        logger.debug("Intentando cargar usuario con email: {}", email.replaceAll("[\r\n]", "_"));
 
         // Paso 1: Buscar el usuario en la base de datos
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    logger.warn("Intento de autenticación fallido. Usuario no encontrado: {}", email);
+                    logger.warn("Intento de autenticación fallido. Usuario no encontrado: {}", email.replaceAll("[\r\n]", "_"));
                     return new UsernameNotFoundException("User not found with email: " + email);
                 });
 
@@ -65,7 +65,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .toList()
                 .toArray(new String[0]);
 
-        logger.debug("Roles asignados al usuario {}: {}", email, String.join(", ", authorities));
+        logger.debug("Roles asignados al usuario {}: {}", email.replaceAll("[\r\n]", "_"), String.join(", ", authorities));
 
         // Paso 3: Construir el objeto UserDetails de Spring Security
         // Este objeto contiene toda la información necesaria para la autenticación y autorización

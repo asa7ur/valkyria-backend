@@ -37,7 +37,7 @@ public class CampingTypeService {
     @Transactional(readOnly = true)
     public List<CampingTypeDTO> getAllCampingTypes(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de entradas. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
@@ -76,7 +76,7 @@ public class CampingTypeService {
                     return new AppException("msg.camping.not-found", id);
                 });
 
-        logger.debug("Tipo de camping encontrado: {}", result.getName());
+        logger.debug("Tipo de camping encontrado: {}", result.getName().replaceAll("[\r\n]", "_"));
         return result;
     }
 
@@ -88,7 +88,7 @@ public class CampingTypeService {
      */
     @Transactional
     public CampingTypeDTO createCampingType(CampingTypeCreateDTO dto) {
-        logger.info("Iniciando creación de nuevo tipo de camping: {}", dto.getName());
+        logger.info("Iniciando creación de nuevo tipo de camping: {}", dto.getName().replaceAll("[\r\n]", "_"));
 
         // Conversión de DTO a entidad
         CampingType entity = campingTypeMapper.toEntity(dto);
@@ -97,7 +97,7 @@ public class CampingTypeService {
         // Persistencia en base de datos
         CampingType savedEntity = campingTypeRepository.save(entity);
         logger.info("Tipo de camping creado con éxito. ID: {}, Nombre: {}",
-                savedEntity.getId(), savedEntity.getName());
+                savedEntity.getId(), savedEntity.getName().replaceAll("[\r\n]", "_"));
 
         return campingTypeMapper.toDTO(savedEntity);
     }
@@ -123,7 +123,7 @@ public class CampingTypeService {
                 });
 
         logger.debug("Tipo de camping encontrado: {}. Datos actuales: Nombre={}",
-                id, existing.getName());
+                id, existing.getName().replaceAll("[\r\n]", "_"));
 
         // Actualizar los campos de la entidad con los datos del DTO
         campingTypeMapper.updateEntityFromDTO(dto, existing);
@@ -132,7 +132,7 @@ public class CampingTypeService {
         // Guardar cambios
         CampingType updatedEntity = campingTypeRepository.save(existing);
         logger.info("Tipo de camping con ID {} actualizado correctamente. Nuevo nombre: {}",
-                id, updatedEntity.getName());
+                id, updatedEntity.getName().replaceAll("[\r\n]", "_"));
 
         return campingTypeMapper.toDTO(updatedEntity);
     }

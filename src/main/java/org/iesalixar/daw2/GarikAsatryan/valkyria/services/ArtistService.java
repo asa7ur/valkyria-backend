@@ -46,7 +46,7 @@ public class ArtistService {
     @Transactional(readOnly = true)
     public List<ArtistDTO> getAllArtists(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de artistas. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 

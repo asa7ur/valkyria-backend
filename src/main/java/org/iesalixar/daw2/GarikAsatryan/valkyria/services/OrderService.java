@@ -57,7 +57,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderDTO> getAllOrders(FilterDTO filterDTO) {
         logger.info("Recuperando pedidos. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
@@ -89,12 +89,12 @@ public class OrderService {
      */
     @Transactional(readOnly = true)
     public List<OrderDTO> getOrdersByUser(String email) {
-        logger.info("Recuperando historial de pedidos para usuario: {}", email);
+        logger.info("Recuperando historial de pedidos para usuario: {}", email.replaceAll("[\r\n]", "_"));
 
         // Consulta optimizada con ordenación en BD
         List<Order> orders = orderRepository.findByUserEmailOrderByOrderDateDesc(email);
 
-        logger.debug("Total de pedidos encontrados para {}: {}", email, orders.size());
+        logger.debug("Total de pedidos encontrados para {}: {}", email.replaceAll("[\r\n]", "_"), orders.size());
 
         return orderMapper.toDTOList(orders);
     }
@@ -180,10 +180,10 @@ public class OrderService {
         // Log diferenciado según tipo de compra
         if (user != null) {
             logger.info("Iniciando procesamiento de pedido para usuario registrado: {}",
-                    user.getEmail());
+                    user.getEmail().replaceAll("[\r\n]", "_"));
         } else {
             logger.info("Iniciando procesamiento de pedido para invitado: {}",
-                    request.getGuestEmail());
+                    request.getGuestEmail() != null ? request.getGuestEmail().replaceAll("[\r\n]", "_") : null);
         }
 
         // Paso 1: Crear la entidad Order con datos iniciales

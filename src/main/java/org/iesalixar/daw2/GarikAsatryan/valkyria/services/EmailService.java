@@ -38,7 +38,7 @@ public class EmailService {
      * Envía un correo de activación utilizando el template HTML de Thymeleaf.
      */
     public void sendRegistrationConfirmationEmail(String to, String firstName, String token) {
-        logger.info("Iniciando envío de correo de activación (HTML) a: {}", to);
+        logger.info("Iniciando envío de correo de activación (HTML) a: {}", to.replaceAll("[\r\n]", "_"));
 
         // El enlace de activación debe llevar al usuario a Angular
         String confirmationUrl = frontendUrl + "/confirm-registration?token=" + token;
@@ -69,7 +69,7 @@ public class EmailService {
             helper.setText(body, true); // true = enviar como HTML
 
             mailSender.send(message);
-            logger.info("Correo de activación HTML enviado a: {}", to);
+            logger.info("Correo de activación HTML enviado a: {}", to.replaceAll("[\r\n]", "_"));
         } catch (Exception e) {
             logger.error("Error al enviar correo de activación: {}", e.getMessage());
             throw new RuntimeException("Error al enviar email de activación", e);

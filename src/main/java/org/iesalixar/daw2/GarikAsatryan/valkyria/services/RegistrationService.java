@@ -73,17 +73,17 @@ public class RegistrationService {
      */
     @Transactional
     public void registerUser(UserRegistrationDTO registrationDTO) {
-        logger.info("Iniciando proceso de registro para usuario: {}", registrationDTO.getEmail());
+        logger.info("Iniciando proceso de registro para usuario: {}", registrationDTO.getEmail().replaceAll("[\r\n]", "_"));
         logger.debug("Datos de registro: Nombre={} {}, Email={}",
-                registrationDTO.getFirstName(),
-                registrationDTO.getLastName(),
-                registrationDTO.getEmail());
+                registrationDTO.getFirstName().replaceAll("[\r\n]", "_"),
+                registrationDTO.getLastName().replaceAll("[\r\n]", "_"),
+                registrationDTO.getEmail().replaceAll("[\r\n]", "_"));
 
         // ==================== PASO 1: VALIDACIÓN DE EMAIL ÚNICO ====================
 
         logger.debug("Verificando si el email ya existe en el sistema...");
         if (userRepository.existsByEmail(registrationDTO.getEmail())) {
-            logger.warn("Intento de registro con email duplicado: {}", registrationDTO.getEmail());
+            logger.warn("Intento de registro con email duplicado: {}", registrationDTO.getEmail().replaceAll("[\r\n]", "_"));
             throw new AppException("msg.register.error.email-exists", registrationDTO.getEmail());
         }
         logger.debug("✓ Email disponible, no existe en el sistema");
@@ -128,7 +128,7 @@ public class RegistrationService {
         logger.debug("Guardando usuario en la base de datos...");
         User savedUser = userRepository.save(user);
         logger.info("✓ Usuario guardado en BD. ID: {}, Email: {}",
-                savedUser.getId(), savedUser.getEmail());
+                savedUser.getId(), savedUser.getEmail().replaceAll("[\r\n]", "_"));
 
         // ==================== PASO 7: GENERACIÓN DE TOKEN DE VERIFICACIÓN ====================
 
@@ -139,25 +139,25 @@ public class RegistrationService {
 
         // ==================== PASO 8: ENVÍO DE EMAIL DE CONFIRMACIÓN ====================
 
-        logger.info("Enviando email de confirmación a: {}", savedUser.getEmail());
+        logger.info("Enviando email de confirmación a: {}", savedUser.getEmail().replaceAll("[\r\n]", "_"));
         try {
             emailService.sendRegistrationConfirmationEmail(
                     savedUser.getEmail(),
                     savedUser.getFirstName(),
                     token
             );
-            logger.info("✓ Email de confirmación enviado exitosamente a {}", savedUser.getEmail());
+            logger.info("✓ Email de confirmación enviado exitosamente a {}", savedUser.getEmail().replaceAll("[\r\n]", "_"));
 
         } catch (Exception e) {
             // Si falla el envío de email, la transacción se revertirá
             logger.error("ERROR al enviar email de confirmación a {}. " +
                             "La transacción será revertida y el usuario NO será creado. Error: {}",
-                    savedUser.getEmail(), e.getMessage(), e);
+                    savedUser.getEmail().replaceAll("[\r\n]", "_"), e.getMessage(), e);
             throw e; // Re-lanzar para provocar rollback
         }
 
         logger.info("✓✓ REGISTRO COMPLETADO exitosamente para {}. " +
                         "Usuario debe verificar su email para activar la cuenta.",
-                savedUser.getEmail());
+                savedUser.getEmail().replaceAll("[\r\n]", "_"));
     }
 }

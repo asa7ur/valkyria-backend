@@ -43,7 +43,7 @@ public class TicketService {
     @Transactional(readOnly = true)
     public List<TicketDTO> getAllTickets(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de entradas. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
@@ -87,7 +87,7 @@ public class TicketService {
     @Transactional
     public TicketDTO createTicket(TicketCreateDTO dto) {
         logger.info("Iniciando creación manual de entrada para: {} {}",
-                dto.getFirstName(), dto.getLastName());
+                dto.getFirstName().replaceAll("[\r\n]", "_"), dto.getLastName().replaceAll("[\r\n]", "_"));
         logger.debug("Tipo de entrada solicitado ID: {}", dto.getTicketTypeId());
 
         TicketType type = ticketTypeRepository.findById(dto.getTicketTypeId())
@@ -108,9 +108,9 @@ public class TicketService {
 
         logger.info("✓ Entrada creada exitosamente. ID: {}, Asistente: {} {}, Tipo: {}",
                 saved.getId(),
-                saved.getFirstName(),
-                saved.getLastName(),
-                type.getName());
+                saved.getFirstName().replaceAll("[\r\n]", "_"),
+                saved.getLastName().replaceAll("[\r\n]", "_"),
+                type.getName().replaceAll("[\r\n]", "_"));
 
         return ticketMapper.toDTO(saved);
     }
@@ -167,9 +167,9 @@ public class TicketService {
 
         logger.info("✓ Entrada ID {} actualizada correctamente. Nuevo asistente: {} {}, Nuevo tipo: {}",
                 id,
-                updated.getFirstName(),
-                updated.getLastName(),
-                type.getName());
+                updated.getFirstName().replaceAll("[\r\n]", "_"),
+                updated.getLastName().replaceAll("[\r\n]", "_"),
+                type.getName().replaceAll("[\r\n]", "_"));
 
         return ticketMapper.toDTO(updated);
     }
@@ -205,7 +205,7 @@ public class TicketService {
             type.setStockAvailable(type.getStockAvailable() + 1);
             ticketTypeRepository.save(type);
             logger.info("Stock devuelto para ticket tipo '{}'. Nuevo stock: {}",
-                    type.getName(), type.getStockAvailable());
+                    type.getName().replaceAll("[\r\n]", "_"), type.getStockAvailable());
         }
 
         ticketRepository.delete(ticket);

@@ -49,7 +49,7 @@ public class SponsorService {
     @Transactional(readOnly = true)
     public List<SponsorDetailDTO> getAllSponsors(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de patrocinadores. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
@@ -103,7 +103,7 @@ public class SponsorService {
 
     @Transactional
     public SponsorDTO createSponsor(SponsorCreateDTO dto) {
-        logger.info("Iniciando creación de nuevo patrocinador: {}", dto.getName());
+        logger.info("Iniciando creación de nuevo patrocinador: {}", dto.getName().replaceAll("[\r\n]", "_"));
 
         // Conversión de DTO a entidad
         Sponsor sponsor = sponsorMapper.toEntity(dto);
@@ -114,7 +114,7 @@ public class SponsorService {
         // Persistencia en base de datos
         Sponsor savedSponsor = sponsorRepository.save(sponsor);
         logger.info("Patrocinador creado con éxito. ID: {}, Nombre: {}",
-                savedSponsor.getId(), savedSponsor.getName());
+                savedSponsor.getId(), savedSponsor.getName().replaceAll("[\r\n]", "_"));
 
         return sponsorMapper.toDTO(savedSponsor);
     }

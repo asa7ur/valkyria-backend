@@ -43,7 +43,9 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public List<UserDTO> getAllUsers(FilterDTO filterDTO) {
-        logger.info("Buscando usuarios. Filtro: '{}', Página: {}", filterDTO.getSearch(), filterDTO.getPage());
+        logger.info("Buscando usuarios. Filtro: '{}', Página: {}",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : null,
+                filterDTO.getPage());
 
         // Creamos el objeto Pageable usando el componente común
         Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
@@ -124,7 +126,7 @@ public class UserService {
 
         User updated = userRepository.save(existingUser);
         logger.info("Usuario con ID {} actualizado (Email: {}, Enabled: {}, Roles: {})",
-                id, updated.getEmail(), updated.isEnabled(), dto.getRoles());
+                id, updated.getEmail().replaceAll("[\r\n]", "_"), updated.isEnabled(), dto.getRoles());
         return userMapper.toDTO(updated);
     }
 

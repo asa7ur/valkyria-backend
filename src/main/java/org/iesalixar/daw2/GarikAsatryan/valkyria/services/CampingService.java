@@ -43,7 +43,7 @@ public class CampingService {
     @Transactional(readOnly = true)
     public List<CampingDTO> getAllCampings(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de campings. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
@@ -74,7 +74,7 @@ public class CampingService {
     @Transactional
     public CampingDTO createCamping(CampingCreateDTO dto) {
         logger.info("Iniciando creación manual de entrada de camping para: {} {}",
-                dto.getFirstName(), dto.getLastName());
+                dto.getFirstName().replaceAll("[\r\n]", "_"), dto.getLastName().replaceAll("[\r\n]", "_"));
         logger.debug("Tipo de camping solicitado ID: {}", dto.getCampingTypeId());
         CampingType type = campingTypeRepository.findById(dto.getCampingTypeId())
                 .orElseThrow(() -> new AppException("msg.camping.type-not-found", dto.getCampingTypeId()));
@@ -90,9 +90,9 @@ public class CampingService {
 
         logger.info("✓ Entrada Camping creada exitosamente. ID: {}, Asistente: {} {}, Tipo: {}",
                 savedCamping.getId(),
-                savedCamping.getFirstName(),
-                savedCamping.getLastName(),
-                type.getName());
+                savedCamping.getFirstName().replaceAll("[\r\n]", "_"),
+                savedCamping.getLastName().replaceAll("[\r\n]", "_"),
+                type.getName().replaceAll("[\r\n]", "_"));
 
         return campingMapper.toDTO(savedCamping);
     }
@@ -126,7 +126,7 @@ public class CampingService {
             type.setStockAvailable(type.getStockAvailable() + 1);
             campingTypeRepository.save(type);
             logger.info("Stock devuelto para camping tipo '{}'. Nuevo stock: {}",
-                    type.getName(), type.getStockAvailable());
+                    type.getName().replaceAll("[\r\n]", "_"), type.getStockAvailable());
         }
 
         campingRepository.delete(camping);

@@ -40,7 +40,7 @@ public class StageService {
     @Transactional(readOnly = true)
     public List<StageDTO> getAllStages(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de escenarios. Término: '{}', Página: {}, Tamaño: {}",
-                filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
+                filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
@@ -82,7 +82,7 @@ public class StageService {
      */
     @Transactional
     public StageDTO createStage(StageCreateDTO dto) {
-        logger.info("Iniciando creación de escenario: {}", dto.getName());
+        logger.info("Iniciando creación de escenario: {}", dto.getName().replaceAll("[\r\n]", "_"));
 
         // Conversión de DTO a entidad
         Stage stage = stageMapper.toEntity(dto);
@@ -92,7 +92,7 @@ public class StageService {
 
         logger.info("✓ Escenario creado con éxito. ID: {}, Nombre: '{}', Capacidad: {}",
                 saved.getId(),
-                saved.getName(),
+                saved.getName().replaceAll("[\r\n]", "_"),
                 saved.getCapacity());
 
         return stageMapper.toDTO(saved);

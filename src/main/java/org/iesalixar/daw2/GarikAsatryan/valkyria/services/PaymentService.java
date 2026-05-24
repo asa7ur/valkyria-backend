@@ -167,7 +167,7 @@ public class PaymentService {
     public void processWebhookEvent(String payload, String sigHeader) throws Exception {
         logger.info("Procesando evento de webhook de Stripe");
         logger.debug("Payload recibido (primeros 100 chars): {}",
-                payload.substring(0, Math.min(100, payload.length())));
+                payload.substring(0, Math.min(100, payload.length())).replaceAll("[\r\n]", "_"));
 
         // Paso 1: Construir y verificar el evento usando la firma
         // Esto garantiza que el webhook realmente viene de Stripe y no ha sido manipulado
@@ -241,7 +241,7 @@ public class PaymentService {
                 .map(stripeObject -> {
                     Session session = (Session) stripeObject;
                     String clientRefId = session.getClientReferenceId();
-                    logger.debug("ID extraído mediante deserialización: {}", clientRefId);
+                    logger.debug("ID extraído mediante deserialización: {}", clientRefId != null ? clientRefId.replaceAll("[\r\n]", "_") : null);
                     return clientRefId;
                 })
                 .orElseGet(() -> {
@@ -252,7 +252,7 @@ public class PaymentService {
 
                         if (node.has("client_reference_id")) {
                             String clientRefId = node.get("client_reference_id").stringValue();
-                            logger.debug("ID extraído mediante parsing JSON: {}", clientRefId);
+                            logger.debug("ID extraído mediante parsing JSON: {}", clientRefId.replaceAll("[\r\n]", "_"));
                             return clientRefId;
                         } else {
                             logger.warn("Campo 'client_reference_id' no encontrado en JSON raw");
@@ -295,10 +295,10 @@ public class PaymentService {
                     ? order.getUser().getEmail()
                     : order.getGuestEmail();
 
-            logger.debug("Enviando email con PDF a: {}", recipientEmail);
+            logger.debug("Enviando email con PDF a: {}", recipientEmail != null ? recipientEmail.replaceAll("[\r\n]", "_") : null);
             emailService.sendOrderConfirmationEmail(order, pdfBytes);
 
-            logger.info("✓ Documentación enviada exitosamente por email a: {}", recipientEmail);
+            logger.info("✓ Documentación enviada exitosamente por email a: {}", recipientEmail != null ? recipientEmail.replaceAll("[\r\n]", "_") : null);
 
         } catch (Exception e) {
             // SOFT FAIL: Solo registramos el error, no propagamos la excepción
