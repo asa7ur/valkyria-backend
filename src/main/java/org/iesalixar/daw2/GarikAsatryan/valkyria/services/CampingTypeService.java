@@ -34,6 +34,7 @@ public class CampingTypeService {
     private final CampingTypeMapper campingTypeMapper;
     private final PaginationComponent paginationComponent;
 
+    @Transactional(readOnly = true)
     public List<CampingTypeDTO> getAllCampingTypes(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de entradas. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -64,6 +65,7 @@ public class CampingTypeService {
      * @return DTO del tipo de camping encontrado
      * @throws AppException si el tipo de camping no existe
      */
+    @Transactional(readOnly = true)
     public CampingTypeDTO getCampingTypeById(Long id) {
         logger.info("Buscando tipo de camping con ID: {}", id);
 

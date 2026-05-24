@@ -54,6 +54,7 @@ public class OrderService {
     private final CampingMapper campingMapper;
     private final PaginationComponent paginationComponent;
 
+    @Transactional(readOnly = true)
     public List<OrderDTO> getAllOrders(FilterDTO filterDTO) {
         logger.info("Recuperando pedidos. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",

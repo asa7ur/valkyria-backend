@@ -40,6 +40,7 @@ public class CampingService {
      * Obtiene una lista de artistas basada en filtros.
      * Actualiza el FilterDTO con los metadatos de paginación.
      */
+    @Transactional(readOnly = true)
     public List<CampingDTO> getAllCampings(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de campings. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -63,6 +64,7 @@ public class CampingService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CampingDTO getCampingById(Long id) {
         return campingRepository.findById(id)
                 .map(campingMapper::toDTO)

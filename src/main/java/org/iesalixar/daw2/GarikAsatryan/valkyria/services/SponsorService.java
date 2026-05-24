@@ -1,6 +1,6 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
@@ -46,6 +46,7 @@ public class SponsorService {
      * Obtiene una lista paginada de patrocinadores basada en filtros.
      * Actualiza el FilterDTO con los metadatos de paginación.
      */
+    @Transactional(readOnly = true)
     public List<SponsorDetailDTO> getAllSponsors(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de patrocinadores. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -76,6 +77,7 @@ public class SponsorService {
     /**
      * Obtiene la lista completa de patrocinadores para selectores.
      */
+    @Transactional(readOnly = true)
     public List<SponsorDTO> getAllSponsors() {
         logger.info("Recuperando lista completa de patrocinadores");
 
@@ -90,6 +92,7 @@ public class SponsorService {
     /**
      * Obtiene el detalle de un patrocinador o lanza excepción si no existe.
      */
+    @Transactional(readOnly = true)
     public SponsorDetailDTO getSponsorById(Long id) {
         logger.info("Buscando detalle del patrocinador con ID: {}", id);
 

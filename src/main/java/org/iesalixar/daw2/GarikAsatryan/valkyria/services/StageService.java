@@ -1,6 +1,6 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
@@ -37,6 +37,7 @@ public class StageService {
      * Obtiene escenarios paginados con búsqueda opcional.
      * Permite filtrar por nombre o ubicación del escenario.
      */
+    @Transactional(readOnly = true)
     public List<StageDTO> getAllStages(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de escenarios. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -66,6 +67,7 @@ public class StageService {
      * Obtiene un escenario específico por su ID.
      * Incluye toda la información del escenario (nombre, capacidad, ubicación, etc.).
      */
+    @Transactional(readOnly = true)
     public StageDTO getStageById(Long id) {
         logger.info("Buscando detalle del escenario con ID: {}", id);
 

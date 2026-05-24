@@ -41,6 +41,7 @@ public class UserService {
      * @param filterDTO DTO con criterios de búsqueda y paginación.
      * @return Lista de usuarios mapeados a DTO.
      */
+    @Transactional(readOnly = true)
     public List<UserDTO> getAllUsers(FilterDTO filterDTO) {
         logger.info("Buscando usuarios. Filtro: '{}', Página: {}", filterDTO.getSearch(), filterDTO.getPage());
 
@@ -59,6 +60,7 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public UserDTO getUserById(Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDTO)

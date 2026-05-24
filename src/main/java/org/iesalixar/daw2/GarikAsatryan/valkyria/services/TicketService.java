@@ -40,6 +40,7 @@ public class TicketService {
      * Obtiene una lista de tickets basada en filtros.
      * Actualiza el FilterDTO con los metadatos de paginación.
      */
+    @Transactional(readOnly = true)
     public List<TicketDTO> getAllTickets(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de entradas. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -67,6 +68,7 @@ public class TicketService {
      * Obtiene el detalle completo de un ticket por su ID.
      * Incluye información del asistente, tipo de entrada y código QR.
      */
+    @Transactional(readOnly = true)
     public TicketDTO getTicketById(Long id) {
         return ticketRepository.findById(id)
                 .map(ticketMapper::toDTO)

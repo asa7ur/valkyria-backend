@@ -28,6 +28,7 @@ public class TicketTypeService {
     private final TicketTypeMapper ticketTypeMapper;
     private final PaginationComponent paginationComponent;
 
+    @Transactional(readOnly = true)
     public List<TicketTypeDTO> getAllTicketTypes(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de entradas. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -51,6 +52,7 @@ public class TicketTypeService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public TicketTypeDTO getTicketTypeById(Long id) {
         logger.info("Buscando tipo de entrada con ID: {}", id);
 

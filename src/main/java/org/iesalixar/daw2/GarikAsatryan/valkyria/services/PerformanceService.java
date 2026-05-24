@@ -54,6 +54,7 @@ public class PerformanceService {
      * Permite filtrar por nombre de artista o nombre de escenario.
      * Utilizado para mostrar el programa del festival de forma paginada.
      */
+    @Transactional(readOnly = true)
     public List<PerformanceDTO> getAllPerformances(FilterDTO filterDTO) {
         logger.info("Iniciando búsqueda de actuaciones. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch() : "SIN FILTRO",
@@ -78,6 +79,7 @@ public class PerformanceService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<PerformanceDTO> getAllPerformances() {
         logger.info("Recuperando lista completa de actuaciones");
 
@@ -93,6 +95,7 @@ public class PerformanceService {
      * Obtiene el detalle de una actuación específica por su ID.
      * Incluye información completa del artista y escenario asociados.
      */
+    @Transactional(readOnly = true)
     public PerformanceDTO getPerformanceById(Long id) {
         return performanceRepository.findById(id)
                 .map(performanceMapper::toDTO)
