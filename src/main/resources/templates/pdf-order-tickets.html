@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="">
 <head>
     <meta charset="UTF-8" />
     <style>
@@ -158,6 +158,7 @@
             font-size: 11px;
         }
     </style>
+    <title></title>
 </head>
 <body>
 
@@ -200,7 +201,7 @@
                     </div>
                 </td>
                 <td class="ticket-qr-cell">
-                    <img th:src="${'data:image/png;base64,' + qrMap.get('T' + ticket.id)}" class="qr-img" />
+                    <img th:src="${'data:image/png;base64,' + qrMap.get('T' + ticket.id)}" class="qr-img"  alt=""/>
                     <div class="qr-id" th:text="${ticket.qrCode}">ID</div>
                 </td>
             </tr>
@@ -220,7 +221,7 @@
                         </div>
                     </td>
                     <td class="ticket-qr-cell">
-                        <img th:src="${'data:image/png;base64,' + qrMap.get('C' + camping.id)}" class="qr-img" />
+                        <img th:src="${'data:image/png;base64,' + qrMap.get('C' + camping.id)}" class="qr-img" alt=""/>
                         <div class="qr-id" th:text="${camping.qrCode}">ID</div>
                     </td>
                 </tr>
