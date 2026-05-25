@@ -7,6 +7,7 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.VerificationTokenR
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,9 +45,23 @@ public class VerificationTokenService {
     }
 
     /**
-     * Busca si un usuario ya tiene un token (útil para limpiezas o reenvíos).
+     * Crea un token de cambio de email, eliminando previamente cualquier token de cambio pendiente.
      */
-    public Optional<VerificationToken> getTokenByUser(User user) {
+    @Transactional
+    public String createEmailChangeToken(User user, String pendingEmail) {
+        tokenRepository.findByUser(user).stream()
+                .filter(t -> t.getPendingEmail() != null)
+                .forEach(tokenRepository::delete);
+
+        String token = UUID.randomUUID().toString();
+        tokenRepository.save(new VerificationToken(token, user, pendingEmail));
+        return token;
+    }
+
+    /**
+     * Busca todos los tokens de un usuario (útil para limpiezas o reenvíos).
+     */
+    public List<VerificationToken> getTokensByUser(User user) {
         return tokenRepository.findByUser(user);
     }
 }

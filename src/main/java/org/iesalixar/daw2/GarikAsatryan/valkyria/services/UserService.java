@@ -3,12 +3,14 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.PasswordChangeDTO;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.ProfileUpdateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserRegistrationDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserUpdateDTO;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.PasswordChangeDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Role;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.User;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.VerificationToken;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.UserMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.RoleRepository;
@@ -34,6 +36,8 @@ public class UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final PaginationComponent paginationComponent;
+    private final EmailService emailService;
+    private final VerificationTokenService verificationTokenService;
 
     /**
      * Obtiene una lista paginada de usuarios usando FilterDTO.
@@ -76,6 +80,52 @@ public class UserService {
     public User getUserByEmailEntity(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+    }
+
+    /**
+     * Devuelve el perfil del usuario autenticado como DTO.
+     */
+    @Transactional(readOnly = true)
+    public UserDTO getMe(String email) {
+        return userRepository.findByEmail(email)
+                .map(userMapper::toDTO)
+                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+    }
+
+    /**
+     * Actualiza los datos personales del usuario autenticado.
+     * No permite cambiar email, roles ni estado enabled.
+     */
+    @Transactional
+    public UserDTO updateMe(String email, ProfileUpdateDTO dto) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setPhone(dto.getPhone());
+        user.setBirthDate(dto.getBirthDate());
+
+        User updated = userRepository.save(user);
+        logger.info("Perfil actualizado para el usuario: {}", email.replaceAll("[\r\n]", "_"));
+        return userMapper.toDTO(updated);
+    }
+
+    /**
+     * Cambia la contraseña del usuario autenticado usando su email.
+     */
+    @Transactional
+    public void changePasswordByEmail(String email, PasswordChangeDTO dto) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
+            throw new AppException("msg.error.invalid-current-password");
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userRepository.save(user);
+        logger.info("Contraseña actualizada para el usuario: {}", email.replaceAll("[\r\n]", "_"));
     }
 
     /**
@@ -136,6 +186,36 @@ public class UserService {
             throw new AppException("msg.error.user-not-found", id);
         }
         userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void requestEmailChange(String currentEmail, String newEmail) {
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new AppException("msg.register.error.email-exists", newEmail);
+        }
+        User user = userRepository.findByEmail(currentEmail)
+                .orElseThrow(() -> new AppException("msg.error.user-not-found", currentEmail));
+
+        String token = verificationTokenService.createEmailChangeToken(user, newEmail);
+        emailService.sendEmailChangeEmail(newEmail, user.getFirstName(), token);
+        logger.info("Solicitud de cambio de email enviada para: {}", currentEmail.replaceAll("[\r\n]", "_"));
+    }
+
+    @Transactional
+    public void confirmEmailChange(String token) {
+        VerificationToken vToken = verificationTokenService.getVerificationToken(token)
+                .filter(t -> t.getPendingEmail() != null)
+                .orElseThrow(() -> new AppException("msg.email.change.invalid-token"));
+
+        if (vToken.isExpired()) {
+            throw new AppException("msg.email.change.invalid-token");
+        }
+
+        User user = vToken.getUser();
+        user.setEmail(vToken.getPendingEmail());
+        userRepository.save(user);
+        verificationTokenService.deleteToken(vToken);
+        logger.info("Email actualizado correctamente para usuario con ID {}", user.getId());
     }
 
     // Este método lo mantenemos solo para el proceso de confirmación de token

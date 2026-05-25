@@ -143,7 +143,7 @@ VALUES
 ('66e3fd1f-e3ad-4990-9c32-6a977237652e',39);
 
 -- =========================================================================
--- DÍA 1: 6 de Agosto de 2026 (Thrash, Heavy, Groove, Sludge & Folk)
+-- DÍA 1: 6 de agosto de 2026 (Thrash, Heavy, Groove, Sludge & Folk)
 -- =========================================================================
 INSERT INTO performances (start_time, end_time, artist_id, stage_id) VALUES
 -- Stage 1: Asgard del Sur (15000)
@@ -194,7 +194,7 @@ INSERT INTO performances (start_time, end_time, artist_id, stage_id) VALUES
 
 
 -- =========================================================================
--- DÍA 3: 8 de Agosto de 2026 (Prog, Industrial, Extremo & Avant-Garde)
+-- DÍA 3: 8 de agosto de 2026 (Prog, Industrial, Extremo & Avant-Garde)
 -- =========================================================================
 -- Stage 1: Asgard del Sur (15000)
 ('2026-08-08 21:00:00', '2026-08-08 21:50:00', (SELECT id FROM artists WHERE name = 'Meshuggah'), 1),

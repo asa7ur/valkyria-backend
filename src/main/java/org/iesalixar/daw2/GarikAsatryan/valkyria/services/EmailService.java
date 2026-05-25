@@ -80,6 +80,34 @@ public class EmailService {
      * Este método se mantiene igual (usa texto plano de properties)
      * a menos que crees otro template HTML para los pedidos.
      */
+    public void sendEmailChangeEmail(String to, String firstName, String token) {
+        logger.info("Enviando correo de verificación de cambio de email a: {}", to.replaceAll("[\r\n]", "_"));
+
+        String confirmationUrl = frontendUrl + "/confirm-email?token=" + token;
+        String logoUrl = getLogoAsBase64();
+
+        Context context = new Context(LocaleContextHolder.getLocale());
+        context.setVariable("firstName", firstName);
+        context.setVariable("confirmationUrl", confirmationUrl);
+        context.setVariable("logoUrl", logoUrl);
+
+        String body = templateEngine.process("email-change", context);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(to);
+            helper.setSubject(getMessage("msg.email.change.subject", null));
+            helper.setText(body, true);
+            mailSender.send(message);
+            logger.info("Correo de cambio de email enviado a: {}", to.replaceAll("[\r\n]", "_"));
+        } catch (Exception e) {
+            logger.error("Error al enviar correo de cambio de email: {}", e.getMessage());
+            throw new RuntimeException("Error al enviar email de cambio", e);
+        }
+    }
+
     public void sendOrderConfirmationEmail(Order order, byte[] pdfBytes) throws Exception {
         logger.info("Iniciando envío de confirmación de pedido HTML #{}", order.getId());
 

@@ -22,17 +22,25 @@ public class VerificationToken {
     @Column(nullable = false, unique = true)
     private String token;
 
-    @OneToOne(targetEntity = User.class, fetch = FetchType.EAGER)
+    @ManyToOne(targetEntity = User.class, fetch = FetchType.EAGER)
     @JoinColumn(nullable = false, name = "user_id")
     private User user;
 
     @Column(nullable = false)
     private LocalDateTime expiryDate;
 
+    @Column(name = "pending_email", length = 100)
+    private String pendingEmail;
+
     public VerificationToken(String token, User user) {
         this.token = token;
         this.user = user;
         this.expiryDate = calculateExpiryDate(EXPIRATION);
+    }
+
+    public VerificationToken(String token, User user, String pendingEmail) {
+        this(token, user);
+        this.pendingEmail = pendingEmail;
     }
 
     private LocalDateTime calculateExpiryDate(int expiryTimeInHours) {
