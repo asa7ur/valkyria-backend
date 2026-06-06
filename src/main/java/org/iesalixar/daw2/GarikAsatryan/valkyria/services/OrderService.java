@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -202,6 +203,19 @@ public class OrderService {
         // ========== SECCIÓN 1: PROCESAMIENTO DE TICKETS (ENTRADAS) ==========
 
         if (request.getTickets() != null && !request.getTickets().isEmpty()) {
+            // Validación previa: comprobar stock suficiente por tipo antes de procesar
+            Map<Long, Long> ticketCountByType = request.getTickets().stream()
+                    .collect(Collectors.groupingBy(TicketCreateDTO::getTicketTypeId, Collectors.counting()));
+            for (Map.Entry<Long, Long> entry : ticketCountByType.entrySet()) {
+                TicketType type = ticketTypeRepository.findById(entry.getKey())
+                        .orElseThrow(() -> new AppException("msg.error.ticket-type-not-found"));
+                if (type.getStockAvailable() < entry.getValue()) {
+                    logger.error("Stock insuficiente para ticket tipo '{}': solicitados {}, disponibles {}",
+                            type.getName(), entry.getValue(), type.getStockAvailable());
+                    throw new AppException("msg.error.no-stock", type.getName());
+                }
+            }
+
             logger.info("Procesando {} tickets para el pedido", request.getTickets().size());
 
             int ticketIndex = 0;
@@ -259,6 +273,19 @@ public class OrderService {
         // ========== SECCIÓN 2: PROCESAMIENTO DE CAMPINGS (RESERVAS) ==========
 
         if (request.getCampings() != null && !request.getCampings().isEmpty()) {
+            // Validación previa: comprobar stock suficiente por tipo antes de procesar
+            Map<Long, Long> campingCountByType = request.getCampings().stream()
+                    .collect(Collectors.groupingBy(CampingCreateDTO::getCampingTypeId, Collectors.counting()));
+            for (Map.Entry<Long, Long> entry : campingCountByType.entrySet()) {
+                CampingType type = campingTypeRepository.findById(entry.getKey())
+                        .orElseThrow(() -> new AppException("msg.error.camping-type-not-found"));
+                if (type.getStockAvailable() < entry.getValue()) {
+                    logger.error("Stock insuficiente para camping tipo '{}': solicitados {}, disponibles {}",
+                            type.getName(), entry.getValue(), type.getStockAvailable());
+                    throw new AppException("msg.error.no-stock", type.getName());
+                }
+            }
+
             logger.info("Procesando {} campings para el pedido", request.getCampings().size());
 
             int campingIndex = 0;
