@@ -11,6 +11,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +38,7 @@ public class StageController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<StageDTO>> createStage(@Valid @RequestBody StageCreateDTO stageCreateDTO) {
         StageDTO created = stageService.createStage(stageCreateDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -44,6 +46,7 @@ public class StageController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<StageDTO>> updateStage(
             @PathVariable Long id,
             @Valid @RequestBody StageCreateDTO dto) {
@@ -52,6 +55,7 @@ public class StageController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteStage(@PathVariable Long id) {
         stageService.deleteStage(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.stage.delete.success"), null));

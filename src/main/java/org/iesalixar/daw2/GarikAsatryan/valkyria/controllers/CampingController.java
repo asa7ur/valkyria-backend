@@ -11,6 +11,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/campings")
 @RequiredArgsConstructor
+// Las reservas de camping contienen datos personales y códigos QR de acceso: gestión reservada a MANAGER/ADMIN.
+@PreAuthorize("hasRole('MANAGER')")
 public class CampingController {
 
     private final CampingService campingService;

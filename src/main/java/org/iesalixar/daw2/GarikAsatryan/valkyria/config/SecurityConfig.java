@@ -64,6 +64,8 @@ public class SecurityConfig {
                 // IF_REQUIRED es necesario para el flujo OAuth2 (almacena el state entre peticiones)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
+                        // Debe declararse antes de "/api/v1/**": Spring aplica la primera regla que coincide
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(
                                 "/",
                                 "/css/**",
@@ -79,7 +81,6 @@ public class SecurityConfig {
                                 "/api-docs",
                                 "/api-docs.yaml")
                         .permitAll()
-                        .requestMatchers("/admin/**").hasAnyRole("ADMIN", "MANAGER")
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

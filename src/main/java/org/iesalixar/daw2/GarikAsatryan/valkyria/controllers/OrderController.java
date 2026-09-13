@@ -18,6 +18,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +40,7 @@ public class OrderController {
      * Devuelve todos los pedidos
      */
     @GetMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<List<OrderDTO>>> getAllOrders(@ModelAttribute FilterDTO filterDTO) {
         List<OrderDTO> data = orderService.getAllOrders(filterDTO);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.order.list.success"), data, filterDTO));
@@ -48,6 +50,7 @@ public class OrderController {
      * Devuelve el historial de pedidos del usuario autenticado.
      */
     @GetMapping("/my-orders")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ResponseDTO<List<OrderDTO>>> getMyOrders(Authentication authentication) {
         // authentication.getName() devuelve el email del usuario logueado (desde el JWT)
         List<OrderDTO> orders = orderService.getOrdersByUser(authentication.getName());
@@ -58,6 +61,7 @@ public class OrderController {
      * Borra un pedido.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.order.delete.success"), null));
@@ -98,6 +102,7 @@ public class OrderController {
      * Solo permite la descarga si el pedido pertenece al usuario autenticado.
      */
     @GetMapping("/{id}/download")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id, Authentication authentication) throws Exception {
         Order order = orderService.getOrderEntityById(id);
 

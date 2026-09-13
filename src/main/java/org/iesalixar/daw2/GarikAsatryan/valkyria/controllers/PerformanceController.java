@@ -11,6 +11,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -54,6 +55,7 @@ public class PerformanceController {
      * El @Valid disparará FieldsComparison y PerformanceOverlap.
      */
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<PerformanceDTO>> createPerformance(
             @Valid @RequestBody PerformanceCreateDTO dto) {
         PerformanceDTO created = performanceService.createPerformance(dto);
@@ -65,6 +67,7 @@ public class PerformanceController {
      * Actualiza una actuación existente.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<PerformanceDTO>> updatePerformance(
             @PathVariable Long id,
             @Valid @RequestBody PerformanceCreateDTO dto) {
@@ -76,6 +79,7 @@ public class PerformanceController {
      * Elimina una actuación.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deletePerformance(@PathVariable Long id) {
         performanceService.deletePerformance(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.performance.delete.success"), null));

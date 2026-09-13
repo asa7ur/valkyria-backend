@@ -9,6 +9,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +43,7 @@ public class ArtistController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<ArtistDTO>> createArtist(@Valid @RequestBody ArtistCreateDTO artistCreateDTO) {
         ArtistDTO created = artistService.createArtist(artistCreateDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -49,6 +51,7 @@ public class ArtistController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<ArtistDTO>> updateArtist(
             @PathVariable Long id,
             @Valid @RequestBody ArtistCreateDTO artistCreateDTO) {
@@ -57,12 +60,14 @@ public class ArtistController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteArtist(@PathVariable Long id) {
         artistService.deleteArtist(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.artist.delete.success"), null));
     }
 
     @PostMapping("/{id}/logo")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Map<String, String>>> uploadLogo(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {
@@ -74,6 +79,7 @@ public class ArtistController {
     }
 
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<List<ArtistImageDTO>>> uploadGalleryImages(
             @PathVariable Long id,
             @RequestParam("files") MultipartFile[] files) {
@@ -83,12 +89,14 @@ public class ArtistController {
     }
 
     @DeleteMapping("/{id}/logo")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteLogo(@PathVariable Long id) {
         artistService.deleteLogo(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.artist.logo.delete.success"), null));
     }
 
     @DeleteMapping("/images/{imageId}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteGalleryImage(@PathVariable Long imageId) {
         artistService.deleteArtistImage(imageId);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.artist.images.delete.success"), null));

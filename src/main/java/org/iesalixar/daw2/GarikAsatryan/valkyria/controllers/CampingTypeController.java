@@ -8,6 +8,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class CampingTypeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<CampingTypeDTO>> createCampingType(@Valid @RequestBody CampingTypeCreateDTO dto) {
         CampingTypeDTO created = campingTypeService.createCampingType(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -41,6 +43,7 @@ public class CampingTypeController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<CampingTypeDTO>> updateCampingType(
             @PathVariable Long id,
             @Valid @RequestBody CampingTypeCreateDTO dto) {
@@ -49,6 +52,7 @@ public class CampingTypeController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteCampingType(@PathVariable Long id) {
         campingTypeService.deleteCampingType(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.campingType.delete.success"), null));

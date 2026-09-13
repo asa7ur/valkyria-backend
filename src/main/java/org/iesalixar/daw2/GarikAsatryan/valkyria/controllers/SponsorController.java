@@ -8,6 +8,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,18 +30,21 @@ public class SponsorController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<List<SponsorDetailDTO>>> getAllSponsors(@ModelAttribute FilterDTO filterDTO) {
         List<SponsorDetailDTO> data = sponsorService.getAllSponsors(filterDTO);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.sponsor.list.success"), data, filterDTO));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<SponsorDetailDTO>> getSponsorById(@PathVariable Long id) {
         SponsorDetailDTO data = sponsorService.getSponsorById(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.sponsor.get.success"), data));
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<SponsorDTO>> createSponsor(@Valid @RequestBody SponsorCreateDTO dto) {
         SponsorDTO created = sponsorService.createSponsor(dto);
         return ResponseEntity.status(HttpStatus.CREATED).
@@ -48,6 +52,7 @@ public class SponsorController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<SponsorDTO>> updateSponsor(
             @PathVariable Long id,
             @Valid @RequestBody SponsorCreateDTO dto) {
@@ -56,12 +61,14 @@ public class SponsorController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteSponsor(@PathVariable Long id) {
         sponsorService.deleteSponsor(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.sponsor.delete.success"), null));
     }
 
     @PostMapping("/{id}/logo")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Map<String, String>>> uploadLogo(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {
@@ -73,6 +80,7 @@ public class SponsorController {
     }
 
     @DeleteMapping("/{id}/logo")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ResponseDTO<Void>> deleteLogo(@PathVariable Long id) {
         sponsorService.deleteLogo(id);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.sponsor.image.delete.success"), null));
