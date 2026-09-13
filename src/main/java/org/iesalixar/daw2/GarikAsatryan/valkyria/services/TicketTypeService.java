@@ -60,7 +60,7 @@ public class TicketTypeService {
                 .map(ticketTypeMapper::toDTO)
                 .orElseThrow(() -> {
                     logger.error("Tipo de entrada con ID {} no encontrado", id);
-                    return new AppException("msg.ticket.not-found", id);
+                    return AppException.notFound("msg.ticketType.not-found", id);
                 });
 
         logger.debug("Tipo de entrada encontrado: {}", result.getName());
@@ -76,7 +76,7 @@ public class TicketTypeService {
     @Transactional
     public TicketTypeDTO updateTicketType(Long id, TicketTypeCreateDTO dto) {
         TicketType existing = ticketTypeRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.ticket.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.ticketType.not-found", id));
 
         ticketTypeMapper.updateEntityFromDTO(dto, existing);
         return ticketTypeMapper.toDTO(ticketTypeRepository.save(existing));
@@ -85,7 +85,7 @@ public class TicketTypeService {
     @Transactional
     public void deleteTicketType(Long id) {
         if (!ticketTypeRepository.existsById(id)) {
-            throw new AppException("msg.ticket.not-found", id);
+            throw AppException.notFound("msg.ticketType.not-found", id);
         }
         ticketTypeRepository.deleteById(id);
     }

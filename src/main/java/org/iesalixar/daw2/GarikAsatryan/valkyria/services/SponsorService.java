@@ -98,7 +98,7 @@ public class SponsorService {
 
         return sponsorRepository.findById(id)
                 .map(sponsorMapper::toDetailDTO)
-                .orElseThrow(() -> new AppException("msg.sponsor.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.sponsor.not-found", id));
     }
 
     @Transactional
@@ -127,7 +127,7 @@ public class SponsorService {
         Sponsor existingSponsor = sponsorRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Patrocinador con ID {} no encontrado para actualización", id);
-                    return new AppException("msg.sponsor.not-found", id);
+                    return AppException.notFound("msg.sponsor.not-found", id);
                 });
 
         logger.debug("Patrocinador encontrado: {}. Datos actuales: Nombre={}",
@@ -156,7 +156,7 @@ public class SponsorService {
         Sponsor sponsor = sponsorRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Patrocinador con ID {} no encontrado al intentar guardar imagen", id);
-                    return new AppException("msg.sponsor.not-found", id);
+                    return AppException.notFound("msg.sponsor.not-found", id);
                 });
 
         // Paso 1: Eliminar la imagen anterior si existe
@@ -190,7 +190,7 @@ public class SponsorService {
         Sponsor sponsor = sponsorRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Patrocinador con ID {} no encontrado al intentar eliminar imagen", id);
-                    return new AppException("msg.sponsor.not-found", id);
+                    return AppException.notFound("msg.sponsor.not-found", id);
                 });
 
         // Verificar si realmente tiene una imagen
@@ -221,7 +221,7 @@ public class SponsorService {
         Sponsor sponsor = sponsorRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Patrocinador con ID {} no encontrado para eliminación", id);
-                    return new AppException("msg.sponsor.not-found", id);
+                    return AppException.notFound("msg.sponsor.not-found", id);
                 });
 
         logger.debug("Patrocinador encontrado: {}", sponsor.getName());

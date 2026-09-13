@@ -84,7 +84,7 @@ public class RegistrationService {
         logger.debug("Verificando si el email ya existe en el sistema...");
         if (userRepository.existsByEmail(registrationDTO.getEmail())) {
             logger.warn("Intento de registro con email duplicado: {}", registrationDTO.getEmail().replaceAll("[\r\n]", "_"));
-            throw new AppException("msg.register.error.email-exists", registrationDTO.getEmail());
+            throw AppException.conflict("msg.register.error.email-exists", registrationDTO.getEmail());
         }
         logger.debug("✓ Email disponible, no existe en el sistema");
 
@@ -111,7 +111,7 @@ public class RegistrationService {
                 .orElseThrow(() -> {
                     logger.error("CRÍTICO: Rol 'USER' no encontrado en la base de datos. " +
                             "Esto debería haberse creado en los datos iniciales del sistema.");
-                    return new AppException("msg.error.role-not-found", "USER");
+                    return AppException.internal("msg.error.role-not-found", "USER");
                 });
 
         user.setRoles(Collections.singletonList(userRole));

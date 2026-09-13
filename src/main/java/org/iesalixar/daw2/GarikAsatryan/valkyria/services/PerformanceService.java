@@ -99,7 +99,7 @@ public class PerformanceService {
     public PerformanceDTO getPerformanceById(Long id) {
         return performanceRepository.findById(id)
                 .map(performanceMapper::toDTO)
-                .orElseThrow(() -> new AppException("msg.performance.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.performance.not-found", id));
     }
 
     /**
@@ -131,7 +131,7 @@ public class PerformanceService {
         Artist artist = artistRepository.findById(dto.getArtistId())
                 .orElseThrow(() -> {
                     logger.error("Artista con ID {} no encontrado al crear actuación", dto.getArtistId());
-                    return new AppException("msg.artist.not-found", dto.getArtistId());
+                    return AppException.badRequest("msg.artist.not-found", dto.getArtistId());
                 });
         logger.debug("Artista encontrado: {}", artist.getName());
 
@@ -139,7 +139,7 @@ public class PerformanceService {
         Stage stage = stageRepository.findById(dto.getStageId())
                 .orElseThrow(() -> {
                     logger.error("Escenario con ID {} no encontrado al crear actuación", dto.getStageId());
-                    return new AppException("msg.stage.not-found", dto.getStageId());
+                    return AppException.badRequest("msg.stage.not-found", dto.getStageId());
                 });
         logger.debug("Escenario encontrado: {}", stage.getName());
 
@@ -186,7 +186,7 @@ public class PerformanceService {
         Performance existingPerformance = performanceRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Actuación con ID {} no encontrada para actualización", id);
-                    return new AppException("msg.performance.not-found", id);
+                    return AppException.notFound("msg.performance.not-found", id);
                 });
 
         logger.debug("Actuación encontrada. Datos actuales: Artista={}, Escenario={}, Horario={} - {}",
@@ -205,7 +205,7 @@ public class PerformanceService {
         Artist artist = artistRepository.findById(dto.getArtistId())
                 .orElseThrow(() -> {
                     logger.error("Artista con ID {} no encontrado al actualizar actuación", dto.getArtistId());
-                    return new AppException("msg.artist.not-found", dto.getArtistId());
+                    return AppException.badRequest("msg.artist.not-found", dto.getArtistId());
                 });
         logger.debug("Artista encontrado: {}", artist.getName());
 
@@ -213,7 +213,7 @@ public class PerformanceService {
         Stage stage = stageRepository.findById(dto.getStageId())
                 .orElseThrow(() -> {
                     logger.error("Escenario con ID {} no encontrado al actualizar actuación", dto.getStageId());
-                    return new AppException("msg.stage.not-found", dto.getStageId());
+                    return AppException.badRequest("msg.stage.not-found", dto.getStageId());
                 });
         logger.debug("Escenario encontrado: {}", stage.getName());
 
@@ -249,7 +249,7 @@ public class PerformanceService {
         // Verificar que la actuación existe antes de intentar eliminar
         if (!performanceRepository.existsById(id)) {
             logger.error("Intento de eliminar actuación inexistente con ID: {}", id);
-            throw new AppException("msg.performance.not-found", id);
+            throw AppException.notFound("msg.performance.not-found", id);
         }
 
         // Eliminar la actuación
@@ -295,7 +295,7 @@ public class PerformanceService {
                     dto.getStageId(), dto.getStartTime(), dto.getEndTime());
 
             // Lanzar excepción que será traducida por GlobalExceptionHandler
-            throw new AppException("msg.validation.performance.overlap");
+            throw AppException.conflict("msg.validation.performance.overlap");
         } else {
             logger.trace("No se encontraron solapamientos horarios");
         }

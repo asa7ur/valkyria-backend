@@ -68,7 +68,7 @@ public class CampingService {
     public CampingDTO getCampingById(Long id) {
         return campingRepository.findById(id)
                 .map(campingMapper::toDTO)
-                .orElseThrow(() -> new AppException("msg.camping.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.camping.not-found", id));
     }
 
     @Transactional
@@ -77,7 +77,7 @@ public class CampingService {
                 dto.getFirstName().replaceAll("[\r\n]", "_"), dto.getLastName().replaceAll("[\r\n]", "_"));
         logger.debug("Tipo de camping solicitado ID: {}", dto.getCampingTypeId());
         CampingType type = campingTypeRepository.findById(dto.getCampingTypeId())
-                .orElseThrow(() -> new AppException("msg.camping.type-not-found", dto.getCampingTypeId()));
+                .orElseThrow(() -> AppException.badRequest("msg.camping.type-not-found", dto.getCampingTypeId()));
 
         logger.debug("Tipo de camping encontrado: {} (Precio: {}, Stock: {})",
                 type.getName(), type.getPrice(), type.getStockAvailable());
@@ -100,10 +100,10 @@ public class CampingService {
     @Transactional
     public CampingDTO updateCamping(Long id, CampingCreateDTO dto) {
         Camping existing = campingRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.camping.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.camping.not-found", id));
 
         CampingType type = campingTypeRepository.findById(dto.getCampingTypeId())
-                .orElseThrow(() -> new AppException("msg.camping.type-not-found", dto.getCampingTypeId()));
+                .orElseThrow(() -> AppException.badRequest("msg.camping.type-not-found", dto.getCampingTypeId()));
 
         campingMapper.updateEntityFromDTO(dto, existing);
         existing.setCampingType(type);
@@ -118,7 +118,7 @@ public class CampingService {
 
         // 1. Buscar el ticket para obtener su tipo antes de borrar
         Camping camping = campingRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.camping.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.camping.not-found", id));
 
         // 2. Recuperar el tipo y devolver el stock
         CampingType type = camping.getCampingType();

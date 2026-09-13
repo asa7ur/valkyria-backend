@@ -73,7 +73,7 @@ public class CampingTypeService {
                 .map(campingTypeMapper::toDTO)
                 .orElseThrow(() -> {
                     logger.error("Tipo de camping con ID {} no encontrado", id);
-                    return new AppException("msg.camping.not-found", id);
+                    return AppException.notFound("msg.campingType.not-found", id);
                 });
 
         logger.debug("Tipo de camping encontrado: {}", result.getName().replaceAll("[\r\n]", "_"));
@@ -119,7 +119,7 @@ public class CampingTypeService {
         CampingType existing = campingTypeRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Tipo de camping con ID {} no encontrado para actualización", id);
-                    return new AppException("msg.camping.not-found", id);
+                    return AppException.notFound("msg.campingType.not-found", id);
                 });
 
         logger.debug("Tipo de camping encontrado: {}. Datos actuales: Nombre={}",
@@ -153,7 +153,7 @@ public class CampingTypeService {
         // Verificar que el tipo de camping existe antes de intentar eliminar
         if (!campingTypeRepository.existsById(id)) {
             logger.error("Intento de eliminar tipo de camping inexistente con ID: {}", id);
-            throw new AppException("msg.camping.not-found", id);
+            throw AppException.notFound("msg.campingType.not-found", id);
         }
 
         logger.debug("Tipo de camping encontrado, procediendo a eliminar");

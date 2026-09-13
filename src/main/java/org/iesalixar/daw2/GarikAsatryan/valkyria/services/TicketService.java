@@ -72,7 +72,7 @@ public class TicketService {
     public TicketDTO getTicketById(Long id) {
         return ticketRepository.findById(id)
                 .map(ticketMapper::toDTO)
-                .orElseThrow(() -> new AppException("msg.ticket.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.ticket.not-found", id));
     }
 
     /**
@@ -94,7 +94,7 @@ public class TicketService {
                 .orElseThrow(() -> {
                     logger.error("Tipo de entrada con ID {} no encontrado al crear ticket",
                             dto.getTicketTypeId());
-                    return new AppException("msg.ticket.type-not-found", dto.getTicketTypeId());
+                    return AppException.badRequest("msg.ticket.type-not-found", dto.getTicketTypeId());
                 });
 
         logger.debug("Tipo de entrada encontrado: {} (Precio: {}, Stock: {})",
@@ -139,7 +139,7 @@ public class TicketService {
         Ticket existing = ticketRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Entrada con ID {} no encontrada para actualización", id);
-                    return new AppException("msg.ticket.not-found", id);
+                    return AppException.notFound("msg.ticket.not-found", id);
                 });
 
         logger.debug("Entrada encontrada. Datos actuales: Asistente={} {}, Tipo={}",
@@ -152,7 +152,7 @@ public class TicketService {
                 .orElseThrow(() -> {
                     logger.error("Tipo de entrada con ID {} no encontrado al actualizar ticket",
                             dto.getTicketTypeId());
-                    return new AppException("msg.ticket.type-not-found", dto.getTicketTypeId());
+                    return AppException.badRequest("msg.ticket.type-not-found", dto.getTicketTypeId());
                 });
 
         logger.debug("Nuevo tipo de entrada encontrado: {}", type.getName());
@@ -197,7 +197,7 @@ public class TicketService {
 
         // 1. Buscar el ticket para obtener su tipo antes de borrar
         Ticket ticket = ticketRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.ticket.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.ticket.not-found", id));
 
         // 2. Recuperar el tipo y devolver el stock
         TicketType type = ticket.getTicketType();

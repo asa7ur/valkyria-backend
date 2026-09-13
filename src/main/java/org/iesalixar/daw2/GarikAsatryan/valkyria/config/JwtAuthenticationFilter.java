@@ -67,11 +67,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            log.error("No se pudo extraer el usuario del token: {}", e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Token caducado\"}");
-            return;
+            // Token inválido o caducado: se sigue como anónimo; los endpoints protegidos responderán 401
+            log.debug("Token JWT descartado: {}", e.getMessage());
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

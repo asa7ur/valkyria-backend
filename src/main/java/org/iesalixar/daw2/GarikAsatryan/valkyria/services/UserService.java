@@ -70,7 +70,7 @@ public class UserService {
     public UserDTO getUserById(Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDTO)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", id));
     }
 
     /**
@@ -79,7 +79,7 @@ public class UserService {
      */
     public User getUserByEmailEntity(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", email));
     }
 
     /**
@@ -89,7 +89,7 @@ public class UserService {
     public UserDTO getMe(String email) {
         return userRepository.findByEmail(email)
                 .map(userMapper::toDTO)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", email));
     }
 
     /**
@@ -99,7 +99,7 @@ public class UserService {
     @Transactional
     public UserDTO updateMe(String email, ProfileUpdateDTO dto) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", email));
 
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
@@ -117,10 +117,10 @@ public class UserService {
     @Transactional
     public void changePasswordByEmail(String email, PasswordChangeDTO dto) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", email));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", email));
 
         if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
-            throw new AppException("msg.error.invalid-current-password");
+            throw AppException.badRequest("msg.error.invalid-current-password");
         }
 
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
@@ -135,7 +135,7 @@ public class UserService {
     @Transactional
     public UserDTO createUser(UserRegistrationDTO dto) {
         if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new AppException("msg.register.error.email-exists", dto.getEmail());
+            throw AppException.conflict("msg.register.error.email-exists", dto.getEmail());
         }
 
         User user = userMapper.toEntity(dto);
@@ -144,7 +144,7 @@ public class UserService {
 
         // Asignar USER por defecto o según lógica de admin
         Role userRole = roleRepository.findByName("USER")
-                .orElseThrow(() -> new AppException("msg.error.role-not-found", "USER"));
+                .orElseThrow(() -> AppException.internal("msg.error.role-not-found", "USER"));
         user.setRoles(List.of(userRole));
 
         return userMapper.toDTO(userRepository.save(user));
@@ -157,10 +157,10 @@ public class UserService {
     @Transactional
     public UserDTO updateUser(Long id, UserUpdateDTO dto) {
         User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", id));
 
         if (!existingUser.getEmail().equals(dto.getEmail()) && userRepository.existsByEmail(dto.getEmail())) {
-            throw new AppException("msg.register.error.email-exists", dto.getEmail());
+            throw AppException.conflict("msg.register.error.email-exists", dto.getEmail());
         }
 
         userMapper.updateEntityFromDTO(dto, existingUser);
@@ -169,7 +169,7 @@ public class UserService {
         if (dto.getRoles() != null) {
             List<Role> roles = dto.getRoles().stream()
                     .map(roleName -> roleRepository.findByName(roleName)
-                            .orElseThrow(() -> new AppException("msg.error.role-not-found", roleName)))
+                            .orElseThrow(() -> AppException.badRequest("msg.error.role-not-found", roleName)))
                     .collect(Collectors.toList());
             existingUser.setRoles(roles);
         }
@@ -183,7 +183,7 @@ public class UserService {
     @Transactional
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new AppException("msg.error.user-not-found", id);
+            throw AppException.notFound("msg.error.user-not-found", id);
         }
         userRepository.deleteById(id);
     }
@@ -191,10 +191,10 @@ public class UserService {
     @Transactional
     public void requestEmailChange(String currentEmail, String newEmail) {
         if (userRepository.existsByEmail(newEmail)) {
-            throw new AppException("msg.register.error.email-exists", newEmail);
+            throw AppException.conflict("msg.register.error.email-exists", newEmail);
         }
         User user = userRepository.findByEmail(currentEmail)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", currentEmail));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", currentEmail));
 
         String token = verificationTokenService.createEmailChangeToken(user, newEmail);
         emailService.sendEmailChangeEmail(newEmail, user.getFirstName(), token);
@@ -205,10 +205,10 @@ public class UserService {
     public void confirmEmailChange(String token) {
         VerificationToken vToken = verificationTokenService.getVerificationToken(token)
                 .filter(t -> t.getPendingEmail() != null)
-                .orElseThrow(() -> new AppException("msg.email.change.invalid-token"));
+                .orElseThrow(() -> AppException.badRequest("msg.email.change.invalid-token"));
 
         if (vToken.isExpired()) {
-            throw new AppException("msg.email.change.invalid-token");
+            throw AppException.badRequest("msg.email.change.invalid-token");
         }
 
         User user = vToken.getUser();
@@ -230,11 +230,11 @@ public class UserService {
     @Transactional
     public void changePassword(Long id, PasswordChangeDTO dto) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.error.user-not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", id));
 
         // 1. Verificar que la contraseña actual es correcta
         if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
-            throw new AppException("msg.error.invalid-current-password");
+            throw AppException.badRequest("msg.error.invalid-current-password");
         }
 
         // 2. Cifrar y guardar la nueva contraseña

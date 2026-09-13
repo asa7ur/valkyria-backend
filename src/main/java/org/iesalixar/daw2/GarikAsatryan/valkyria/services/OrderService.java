@@ -114,7 +114,7 @@ public class OrderService {
         return orderRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Pedido con ID {} no encontrado", id);
-                    return new AppException("msg.error.order-not-found", id);
+                    return AppException.notFound("msg.error.order-not-found", id);
                 });
     }
 
@@ -127,7 +127,7 @@ public class OrderService {
     @Transactional
     public void deleteOrder(Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.error.order-not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.error.order-not-found", id));
 
         logger.info("Restaurando stock para el pedido #{}", id);
 
@@ -208,11 +208,11 @@ public class OrderService {
                     .collect(Collectors.groupingBy(TicketCreateDTO::getTicketTypeId, Collectors.counting()));
             for (Map.Entry<Long, Long> entry : ticketCountByType.entrySet()) {
                 TicketType type = ticketTypeRepository.findById(entry.getKey())
-                        .orElseThrow(() -> new AppException("msg.error.ticket-type-not-found"));
+                        .orElseThrow(() -> AppException.badRequest("msg.error.ticket-type-not-found"));
                 if (type.getStockAvailable() < entry.getValue()) {
                     logger.error("Stock insuficiente para ticket tipo '{}': solicitados {}, disponibles {}",
                             type.getName(), entry.getValue(), type.getStockAvailable());
-                    throw new AppException("msg.error.no-stock", type.getName());
+                    throw AppException.conflict("msg.error.no-stock", type.getName());
                 }
             }
 
@@ -229,7 +229,7 @@ public class OrderService {
                         .orElseThrow(() -> {
                             logger.error("Tipo de ticket con ID {} no encontrado",
                                     tDto.getTicketTypeId());
-                            return new AppException("msg.error.ticket-type-not-found");
+                            return AppException.badRequest("msg.error.ticket-type-not-found");
                         });
 
                 logger.debug("Tipo de ticket encontrado: {} (Stock: {}, Precio: {})",
@@ -238,7 +238,7 @@ public class OrderService {
                 // 1.2: Validar disponibilidad de stock
                 if (type.getStockAvailable() <= 0) {
                     logger.error("Sin stock disponible para ticket tipo: {}", type.getName());
-                    throw new AppException("msg.error.no-stock", type.getName());
+                    throw AppException.conflict("msg.error.no-stock", type.getName());
                 }
 
                 // 1.3: Generar código QR único para este ticket
@@ -278,11 +278,11 @@ public class OrderService {
                     .collect(Collectors.groupingBy(CampingCreateDTO::getCampingTypeId, Collectors.counting()));
             for (Map.Entry<Long, Long> entry : campingCountByType.entrySet()) {
                 CampingType type = campingTypeRepository.findById(entry.getKey())
-                        .orElseThrow(() -> new AppException("msg.error.camping-type-not-found"));
+                        .orElseThrow(() -> AppException.badRequest("msg.error.camping-type-not-found"));
                 if (type.getStockAvailable() < entry.getValue()) {
                     logger.error("Stock insuficiente para camping tipo '{}': solicitados {}, disponibles {}",
                             type.getName(), entry.getValue(), type.getStockAvailable());
-                    throw new AppException("msg.error.no-stock", type.getName());
+                    throw AppException.conflict("msg.error.no-stock", type.getName());
                 }
             }
 
@@ -299,7 +299,7 @@ public class OrderService {
                         .orElseThrow(() -> {
                             logger.error("Tipo de camping con ID {} no encontrado",
                                     cDto.getCampingTypeId());
-                            return new AppException("msg.error.camping-type-not-found");
+                            return AppException.badRequest("msg.error.camping-type-not-found");
                         });
 
                 logger.debug("Tipo de camping encontrado: {} (Stock: {}, Precio: {})",
@@ -308,7 +308,7 @@ public class OrderService {
                 // 2.2: Validar disponibilidad de stock
                 if (type.getStockAvailable() <= 0) {
                     logger.error("Sin stock disponible para camping tipo: {}", type.getName());
-                    throw new AppException("msg.error.no-stock", type.getName());
+                    throw AppException.conflict("msg.error.no-stock", type.getName());
                 }
 
                 // 2.3: Generar código QR único para este camping
@@ -380,7 +380,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     logger.error("Pedido con ID {} no encontrado para confirmación de pago", orderId);
-                    return new AppException("msg.error.order-not-found", orderId);
+                    return AppException.notFound("msg.error.order-not-found", orderId);
                 });
 
         // Log del estado anterior

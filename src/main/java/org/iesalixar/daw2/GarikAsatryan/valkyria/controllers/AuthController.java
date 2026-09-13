@@ -2,7 +2,6 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AuthRequestDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AuthResponseDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserRegistrationDTO;
@@ -17,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -52,40 +50,31 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody AuthRequestDTO authRequest) {
-        try {
-            // 1. Autenticar credenciales
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
-            );
+        // 1. Autenticar credenciales (BadCredentials/Disabled los traduce GlobalExceptionHandler)
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
+        );
 
-            // 2. Cargar datos del usuario y generar Token
-            String username = authentication.getName();
-            User userEntity = userService.getUserByEmailEntity(username);
-            final String jwt = jwtUtil.generateToken((UserDetails) authentication.getPrincipal());
+        // 2. Cargar datos del usuario y generar Token
+        String username = authentication.getName();
+        User userEntity = userService.getUserByEmailEntity(username);
+        final String jwt = jwtUtil.generateToken((UserDetails) authentication.getPrincipal());
 
-            // 3. Lógica de redirección para el frontend
-            boolean isAdminOrManager = authentication.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
+        // 3. Lógica de redirección para el frontend
+        boolean isAdminOrManager = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
 
-            String redirectUrl = isAdminOrManager ? "http://localhost:4200/admin/dashboard" : "http://localhost:4200/";
+        String redirectUrl = isAdminOrManager ? "http://localhost:4200/admin/dashboard" : "http://localhost:4200/";
 
-            // 4. Devolver DTO completo
-            return ResponseEntity.ok(new AuthResponseDTO(
-                    jwt,
-                    "Login successful",
-                    username,
-                    userEntity.getFirstName(),
-                    authentication.getAuthorities(),
-                    redirectUrl
-            ));
-
-        } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AuthResponseDTO(null, "Credenciales inválidas. Por favor, verifica tus datos."));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new AuthResponseDTO(null, "Ocurrió un error inesperado."));
-        }
+        // 4. Devolver DTO completo
+        return ResponseEntity.ok(new AuthResponseDTO(
+                jwt,
+                "Login successful",
+                username,
+                userEntity.getFirstName(),
+                authentication.getAuthorities(),
+                redirectUrl
+        ));
     }
 
     @PostMapping("/register")
@@ -120,17 +109,5 @@ public class AuthController {
                     response.put("error", "Invalid token");
                     return ResponseEntity.badRequest().body(response);
                 });
-    }
-
-    @ExceptionHandler(AppException.class)
-    public ResponseEntity<AuthResponseDTO> handleAppException(AppException e) {
-        return ResponseEntity.status(e.getStatus())
-                .body(new AuthResponseDTO(null, "Error: " + e.getMessageKey()));
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<AuthResponseDTO> handleException(Exception e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new AuthResponseDTO(null, "Error: " + e.getMessage()));
     }
 }

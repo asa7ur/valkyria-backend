@@ -73,7 +73,7 @@ public class StageService {
 
         return stageRepository.findById(id)
                 .map(stageMapper::toDTO)
-                .orElseThrow(() -> new AppException("msg.stage.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.stage.not-found", id));
     }
 
     /**
@@ -111,7 +111,7 @@ public class StageService {
         Stage existingStage = stageRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Escenario con ID {} no encontrado para actualización", id);
-                    return new AppException("msg.stage.not-found", id);
+                    return AppException.notFound("msg.stage.not-found", id);
                 });
 
         logger.debug("Escenario encontrado: {}. Datos actuales: Nombre={}, Capacidad={}",
@@ -160,7 +160,7 @@ public class StageService {
         // Verificar que el escenario existe antes de intentar eliminar
         if (!stageRepository.existsById(id)) {
             logger.error("Intento de eliminar escenario inexistente con ID: {}", id);
-            throw new AppException("msg.stage.not-found", id);
+            throw AppException.notFound("msg.stage.not-found", id);
         }
 
         logger.debug("Escenario encontrado, procediendo a eliminar");

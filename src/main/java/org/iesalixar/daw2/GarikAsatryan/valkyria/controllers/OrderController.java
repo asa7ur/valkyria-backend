@@ -108,7 +108,7 @@ public class OrderController {
 
         // Seguridad: Comprobar que el pedido es del usuario que lo solicita
         if (!order.getUser().getEmail().equals(authentication.getName())) {
-            throw new AppException("msg.error.unauthorized-access");
+            throw AppException.forbidden("msg.error.unauthorized-access");
         }
 
         // Generamos los bytes del PDF

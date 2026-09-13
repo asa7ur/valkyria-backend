@@ -89,7 +89,7 @@ public class FileService {
         // Validación 2: Verificar que sea una imagen
         if (file.getContentType() != null && !file.getContentType().startsWith("image/")) {
             logger.error("Intento de subir archivo que no es imagen: {}", file.getContentType());
-            throw new AppException("msg.file.not-an-image");
+            throw AppException.badRequest("msg.file.not-an-image");
         }
 
         try {
@@ -134,7 +134,7 @@ public class FileService {
             // Error crítico: no se pudo guardar el archivo
             logger.error("Error crítico de E/S al guardar imagen en {}/{}: {}",
                     uploadDirectory, subFolder, e.getMessage(), e);
-            throw new AppException("msg.file.save-error");
+            throw AppException.internal("msg.file.save-error");
         }
     }
 

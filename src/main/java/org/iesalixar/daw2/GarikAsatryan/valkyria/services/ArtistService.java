@@ -74,7 +74,7 @@ public class ArtistService {
     public ArtistDetailDTO getArtistById(Long id) {
         return artistRepository.findById(id)
                 .map(artistMapper::toDetailDTO)
-                .orElseThrow(() -> new AppException("msg.artist.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.artist.not-found", id));
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +86,7 @@ public class ArtistService {
     @Transactional
     public ArtistDTO createArtist(ArtistCreateDTO artistCreateDTO) {
         if (artistRepository.existsByEmail(artistCreateDTO.getEmail())) {
-            throw new AppException("msg.artist.email-exists", artistCreateDTO.getEmail());
+            throw AppException.conflict("msg.artist.email-exists", artistCreateDTO.getEmail());
         }
         Artist artist = artistMapper.toEntity(artistCreateDTO);
         Artist savedArtist = artistRepository.save(artist);
@@ -96,10 +96,10 @@ public class ArtistService {
     @Transactional
     public ArtistDTO updateArtist(Long id, ArtistCreateDTO artistCreateDTO) {
         Artist existingArtist = artistRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.artist.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.artist.not-found", id));
 
         if (artistRepository.existsByEmailAndIdNot(artistCreateDTO.getEmail(), id)) {
-            throw new AppException("msg.artist.email-exists", artistCreateDTO.getEmail());
+            throw AppException.conflict("msg.artist.email-exists", artistCreateDTO.getEmail());
         }
 
         artistMapper.updateEntityFromDTO(artistCreateDTO, existingArtist);
@@ -110,7 +110,7 @@ public class ArtistService {
     @Transactional
     public String processAndSaveLogo(Long id, MultipartFile file) {
         Artist artist = artistRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.artist.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.artist.not-found", id));
 
         if (artist.getLogo() != null) {
             fileService.deleteFile(artist.getLogo(), ARTISTS_FOLDER);
@@ -125,7 +125,7 @@ public class ArtistService {
     @Transactional
     public List<ArtistImageDTO> uploadArtistImages(Long artistId, MultipartFile[] files) {
         Artist artist = artistRepository.findById(artistId)
-                .orElseThrow(() -> new AppException("msg.artist.not-found", artistId));
+                .orElseThrow(() -> AppException.notFound("msg.artist.not-found", artistId));
 
         List<ArtistImage> newImages = new ArrayList<>();
         for (MultipartFile file : files) {
@@ -144,7 +144,7 @@ public class ArtistService {
     @Transactional
     public void deleteArtist(Long id) {
         if (!artistRepository.existsById(id)) {
-            throw new AppException("msg.artist.not-found", id);
+            throw AppException.notFound("msg.artist.not-found", id);
         }
         artistRepository.deleteById(id);
     }
@@ -152,7 +152,7 @@ public class ArtistService {
     @Transactional
     public void deleteLogo(Long id) {
         Artist artist = artistRepository.findById(id)
-                .orElseThrow(() -> new AppException("msg.artist.not-found", id));
+                .orElseThrow(() -> AppException.notFound("msg.artist.not-found", id));
 
         if (artist.getLogo() != null) {
             fileService.deleteFile(artist.getLogo(), ARTISTS_FOLDER);
@@ -169,7 +169,7 @@ public class ArtistService {
                     artistImageRepository.delete(image);
                 },
                 () -> {
-                    throw new AppException("msg.image.not-found", imageId);
+                    throw AppException.notFound("msg.image.not-found", imageId);
                 }
         );
     }
