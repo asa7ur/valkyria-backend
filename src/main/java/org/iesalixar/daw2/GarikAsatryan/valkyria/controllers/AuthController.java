@@ -10,6 +10,7 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.utils.JwtUtil;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.RegistrationService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.UserService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.VerificationTokenService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,9 @@ public class AuthController {
     private final MessageSource messageSource;
     private final VerificationTokenService verificationTokenService;
     private final UserService userService;
+
+    @Value("${app.url}")
+    private String appUrl;
 
     @GetMapping("/validate")
     public ResponseEntity<?> validateToken(Authentication authentication) {
@@ -64,7 +68,7 @@ public class AuthController {
         boolean isAdminOrManager = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
 
-        String redirectUrl = isAdminOrManager ? "http://localhost:4200/admin/dashboard" : "http://localhost:4200/";
+        String redirectUrl = isAdminOrManager ? appUrl + "/admin/dashboard" : appUrl + "/";
 
         // 4. Devolver DTO completo
         return ResponseEntity.ok(new AuthResponseDTO(

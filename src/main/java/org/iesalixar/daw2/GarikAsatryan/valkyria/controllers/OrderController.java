@@ -8,10 +8,8 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.OrderDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.ResponseDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Order;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.User;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PaymentService;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PdfGeneratorService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.UserService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -33,7 +31,6 @@ public class OrderController {
     private final OrderService orderService;
     private final UserService userService;
     private final PaymentService paymentService;
-    private final PdfGeneratorService pdfGeneratorService;
     private final MessageSource messageSource;
 
     /**
@@ -104,15 +101,7 @@ public class OrderController {
     @GetMapping("/{id}/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id, Authentication authentication) throws Exception {
-        Order order = orderService.getOrderEntityById(id);
-
-        // Seguridad: Comprobar que el pedido es del usuario que lo solicita
-        if (!order.getUser().getEmail().equals(authentication.getName())) {
-            throw AppException.forbidden("msg.error.unauthorized-access");
-        }
-
-        // Generamos los bytes del PDF
-        byte[] pdfBytes = pdfGeneratorService.generateOrderPdf(order);
+        byte[] pdfBytes = orderService.generateOrderPdfForUser(id, authentication.getName());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Valkyria_Pedido_" + id + ".pdf")

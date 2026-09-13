@@ -54,6 +54,7 @@ public class OrderService {
     private final TicketMapper ticketMapper;
     private final CampingMapper campingMapper;
     private final PaginationComponent paginationComponent;
+    private final PdfGeneratorService pdfGeneratorService;
 
     @Transactional(readOnly = true)
     public List<OrderDTO> getAllOrders(FilterDTO filterDTO) {
@@ -116,6 +117,18 @@ public class OrderService {
                     logger.error("Pedido con ID {} no encontrado", id);
                     return AppException.notFound("msg.error.order-not-found", id);
                 });
+    }
+
+    // Transaccional porque la comprobación y el PDF recorren relaciones LAZY (usuario, tickets, campings)
+    @Transactional(readOnly = true)
+    public byte[] generateOrderPdfForUser(Long id, String email) throws Exception {
+        Order order = getOrderEntityById(id);
+
+        if (order.getUser() == null || !order.getUser().getEmail().equals(email)) {
+            throw AppException.forbidden("msg.error.unauthorized-access");
+        }
+
+        return pdfGeneratorService.generateOrderPdf(order);
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.iesalixar.daw2.GarikAsatryan.Valkyria.services;
 
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderService;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PdfGeneratorService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.*;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,6 +42,7 @@ class OrderServiceTest {
     @Mock private TicketMapper ticketMapper;
     @Mock private CampingMapper campingMapper;
     @Mock private PaginationComponent paginationComponent;
+    @Mock private PdfGeneratorService pdfGeneratorService;
 
     @InjectMocks
     private OrderService orderService;
@@ -438,6 +441,49 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.getOrderEntityById(42L))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("msg.error.order-not-found");
+    }
+
+    // ─── generateOrderPdfForUser ───────────────────────────────────────────────
+
+    private Order orderOwnedBy(String email) {
+        Order order = new Order();
+        order.setId(1L);
+        if (email != null) {
+            User owner = new User();
+            owner.setEmail(email);
+            order.setUser(owner);
+        }
+        return order;
+    }
+
+    @Test
+    void generateOrderPdfForUser_owner_returnsPdf() throws Exception {
+        Order order = orderOwnedBy("owner@email.com");
+        byte[] pdf = {1, 2, 3};
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(pdfGeneratorService.generateOrderPdf(order)).thenReturn(pdf);
+
+        assertThat(orderService.generateOrderPdfForUser(1L, "owner@email.com")).isEqualTo(pdf);
+    }
+
+    @Test
+    void generateOrderPdfForUser_otherUser_throwsForbidden() throws Exception {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(orderOwnedBy("owner@email.com")));
+
+        assertThatThrownBy(() -> orderService.generateOrderPdfForUser(1L, "other@email.com"))
+                .isInstanceOf(AppException.class)
+                .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
+        verify(pdfGeneratorService, never()).generateOrderPdf(any());
+    }
+
+    @Test
+    void generateOrderPdfForUser_guestOrder_throwsForbidden() throws Exception {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(orderOwnedBy(null)));
+
+        assertThatThrownBy(() -> orderService.generateOrderPdfForUser(1L, "someone@email.com"))
+                .isInstanceOf(AppException.class)
+                .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
+        verify(pdfGeneratorService, never()).generateOrderPdf(any());
     }
 
     // ─── getAllOrders ──────────────────────────────────────────────────────────
