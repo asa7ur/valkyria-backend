@@ -1,10 +1,8 @@
 package org.iesalixar.daw2.GarikAsatryan.Valkyria;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class ValkyriaApplicationTests {
+class ValkyriaApplicationTests extends AbstractIntegrationTest {
 
     @Test
     void contextLoads() {
