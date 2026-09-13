@@ -1,21 +1,3 @@
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS user_role;
-DROP TABLE IF EXISTS roles;
-DROP TABLE IF EXISTS performances;
-DROP TABLE IF EXISTS artist_images;
-DROP TABLE IF EXISTS artists;
-DROP TABLE IF EXISTS sponsor_stage;
-DROP TABLE IF EXISTS stages;
-DROP TABLE IF EXISTS sponsors;
-DROP TABLE IF EXISTS tickets;
-DROP TABLE IF EXISTS ticket_types;
-DROP TABLE IF EXISTS campings;
-DROP TABLE IF EXISTS camping_types;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS verification_tokens;
-SET FOREIGN_KEY_CHECKS = 1;
-
 -- 1. USUARIOS Y SEGURIDAD
 CREATE TABLE users
 (
@@ -37,6 +19,12 @@ CREATE TABLE roles
     id   BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(50) UNIQUE NOT NULL
 );
+
+-- Datos de referencia necesarios en todos los entornos (el orden fija los IDs: 1 ADMIN, 2 MANAGER, 3 USER)
+INSERT INTO roles (name)
+VALUES ('ADMIN'),
+       ('MANAGER'),
+       ('USER');
 
 CREATE TABLE user_role
 (

@@ -6,11 +6,6 @@ VALUES ('garik@email.com', '$2a$12$8LssFTKG6GY.pl7Xd.K8DOHFHWwUUm1wOzQ5L4LT9uoIB
        ('nacho@email.com', '$2a$12$hE8vq6Ng0aKvV60dpP8gRecFR5fT5G7mTjP61ZnnjIOAa2n0mbDjC', true, 'Nacho', 'Muñoz',
         '1996-01-27', '676767676');
 
-INSERT IGNORE INTO roles (name)
-VALUES ('ADMIN'),
-       ('MANAGER'),
-       ('USER');
-
 INSERT IGNORE INTO user_role (user_id, role_id)
 VALUES (1, 1),
        (2, 2),
