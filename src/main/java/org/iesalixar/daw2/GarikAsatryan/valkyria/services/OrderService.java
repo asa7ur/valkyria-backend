@@ -4,15 +4,19 @@ import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.*;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.events.OrderPaidEvent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.CampingMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.OrderMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.TicketMapper;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.CampingRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.CampingTypeRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.OrderRepository;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.TicketRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.TicketTypeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -56,6 +60,9 @@ public class OrderService {
     private final PdfGeneratorService pdfGeneratorService;
     private final StockService stockService;
     private final QrCodeService qrCodeService;
+    private final TicketRepository ticketRepository;
+    private final CampingRepository campingRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<OrderDTO> getAllOrders(FilterDTO filterDTO) {
@@ -233,47 +240,77 @@ public class OrderService {
     }
 
     /**
-     * Confirma el pago de un pedido tras recibir notificación exitosa de Stripe.
-     * Actualiza el estado del pedido de PENDING a PAID.
+     * Confirma el pago de un pedido tras el webhook {@code checkout.session.completed} de Stripe.
      * <p>
-     * Este método es invocado típicamente por un webhook de Stripe o tras
-     * redirección exitosa del proceso de pago.
+     * Es idempotente: Stripe puede reenviar el mismo evento y el cambio PENDING → PAID es un UPDATE
+     * condicional, así que solo la primera llamada publica {@link OrderPaidEvent} (PDF + email).
+     * Si el pedido ya se había cancelado por caducidad, se intenta reactivar volviendo a reservar su stock.
      * <p>
-     * TRANSACCIONAL: Garantiza atomicidad de la actualización del estado.
+     * Un pedido inexistente solo se registra en el log: lanzar un error haría que Stripe reintentase durante días.
      *
-     * @param orderId ID del pedido a confirmar
-     * @return Pedido actualizado con estado PAID
-     * @throws AppException si el pedido no existe
+     * @param orderId ID del pedido pagado
      */
     @Transactional
-    public Order confirmPayment(Long orderId) {
-        logger.info("Iniciando confirmación de pago para pedido #{}", orderId);
-
-        // Buscar el pedido
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> {
-                    logger.error("Pedido con ID {} no encontrado para confirmación de pago", orderId);
-                    return AppException.notFound("msg.error.order-not-found", orderId);
-                });
-
-        // Log del estado anterior
-        OrderStatus previousStatus = order.getStatus();
-        logger.debug("Estado actual del pedido #{}: {}", orderId, previousStatus);
-
-        if (order.getStatus() == OrderStatus.PAID) {
-            logger.info("El pedido #{} ya figuraba como pagado. Ignorando.", orderId);
-            return order;
+    public void confirmPayment(Long orderId) {
+        if (orderRepository.updateStatusIfCurrent(orderId, OrderStatus.PENDING, OrderStatus.PAID) == 1) {
+            logger.info("✓ Pedido #{} marcado como pagado", orderId);
+            eventPublisher.publishEvent(new OrderPaidEvent(orderId));
+            return;
         }
 
-        // Actualizar estado a PAID
-        order.setStatus(OrderStatus.PAID);
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            logger.warn("Pago recibido para el pedido #{}, que no existe", orderId);
+        } else if (order.getStatus() == OrderStatus.PAID) {
+            logger.info("El pedido #{} ya figuraba como pagado (webhook repetido). Ignorando.", orderId);
+        } else {
+            reactivateCancelledOrder(order);
+        }
+    }
 
-        // Persistir cambio
-        Order updatedOrder = orderRepository.save(order);
+    /**
+     * Cancela un pedido que sigue PENDING y devuelve su stock. Lo usan el job de caducidad,
+     * el webhook {@code checkout.session.expired} y el checkout si falla la creación de la sesión de Stripe.
+     * Si el pedido ya no está PENDING (se pagó o ya se canceló) no hace nada.
+     *
+     * @param orderId ID del pedido
+     */
+    @Transactional
+    public void cancelPendingOrder(Long orderId) {
+        if (orderRepository.updateStatusIfCurrent(orderId, OrderStatus.PENDING, OrderStatus.CANCELLED) == 0) {
+            logger.debug("El pedido #{} no está pendiente; no se cancela", orderId);
+            return;
+        }
 
-        logger.info("✓ Pedido #{} confirmado. Estado: {} -> PAID. Total: {} €",
-                orderId, previousStatus, updatedOrder.getTotalPrice());
+        Order order = getOrderEntityById(orderId);
+        stockService.releaseOrderStock(order);
+        updateItemsStatus(orderId, TicketStatus.CANCELLED);
+        logger.info("Pedido #{} cancelado por falta de pago; stock devuelto", orderId);
+    }
 
-        return updatedOrder;
+    // Pago que llega después de cancelar el pedido (p. ej. el webhook se retrasó porque el backend estaba caído)
+    private void reactivateCancelledOrder(Order order) {
+        Long orderId = order.getId();
+
+        if (!stockService.tryReserveOrderStock(order)) {
+            logger.error("Pago recibido del pedido cancelado #{} y ya no hay stock para reactivarlo: " +
+                    "requiere reembolso manual en Stripe", orderId);
+            return;
+        }
+
+        if (orderRepository.updateStatusIfCurrent(orderId, OrderStatus.CANCELLED, OrderStatus.PAID) == 0) {
+            // Otro webhook simultáneo lo reactivó antes: se devuelve lo que acabamos de reservar
+            stockService.releaseOrderStock(order);
+            return;
+        }
+
+        updateItemsStatus(orderId, TicketStatus.ACTIVE);
+        logger.warn("Pedido #{} reactivado: el pago llegó después de cancelarse por caducidad", orderId);
+        eventPublisher.publishEvent(new OrderPaidEvent(orderId));
+    }
+
+    private void updateItemsStatus(Long orderId, TicketStatus status) {
+        ticketRepository.updateStatusByOrderId(orderId, status);
+        campingRepository.updateStatusByOrderId(orderId, status);
     }
 }

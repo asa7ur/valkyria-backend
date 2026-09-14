@@ -131,7 +131,7 @@ public class EmailService {
             helper.setFrom(mailFrom);
 
             helper.setTo(to);
-            helper.setSubject(getMessage("msg.order.email.subject", new Object[]{order.getId()}));
+            helper.setSubject(getMessage("msg.order.email.subject", new Object[]{String.valueOf(order.getId())}));
             helper.setText(body, true); // true = enviar como HTML
 
             String fileName = "Valkyria_Ticket_Order_" + order.getId() + ".pdf";

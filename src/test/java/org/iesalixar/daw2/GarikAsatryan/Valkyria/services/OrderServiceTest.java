@@ -7,13 +7,17 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.services.StockService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.*;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.events.OrderPaidEvent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.CampingMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.OrderMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.TicketMapper;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.CampingRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.CampingTypeRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.OrderRepository;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.TicketRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.TicketTypeRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,6 +51,9 @@ class OrderServiceTest {
     @Mock private PdfGeneratorService pdfGeneratorService;
     @Mock private StockService stockService;
     @Mock private QrCodeService qrCodeService;
+    @Mock private TicketRepository ticketRepository;
+    @Mock private CampingRepository campingRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private OrderService orderService;
@@ -327,42 +334,103 @@ class OrderServiceTest {
 
     // ─── confirmPayment ────────────────────────────────────────────────────────
 
+    private Order orderWithStatus(OrderStatus status) {
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(status);
+        return order;
+    }
+
+    private Order cancelledOrderWithStock(boolean stockAvailable) {
+        Order order = orderWithStatus(OrderStatus.CANCELLED);
+        when(orderRepository.updateStatusIfCurrent(1L, OrderStatus.PENDING, OrderStatus.PAID)).thenReturn(0);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(stockService.tryReserveOrderStock(order)).thenReturn(stockAvailable);
+        return order;
+    }
+
     @Test
-    void confirmPayment_orderNotFound_throwsAppException() {
+    void confirmPayment_pendingOrder_marksPaidAndPublishesEvent() {
+        when(orderRepository.updateStatusIfCurrent(1L, OrderStatus.PENDING, OrderStatus.PAID)).thenReturn(1);
+
+        orderService.confirmPayment(1L);
+
+        verify(eventPublisher).publishEvent(new OrderPaidEvent(1L));
+        verify(orderRepository, never()).findById(any());
+    }
+
+    @Test
+    void confirmPayment_alreadyPaid_doesNotPublishEventAgain() {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(orderWithStatus(OrderStatus.PAID)));
+
+        orderService.confirmPayment(1L);
+
+        verifyNoInteractions(eventPublisher, stockService);
+    }
+
+    @Test
+    void confirmPayment_orderNotFound_onlyLogs() {
         when(orderRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.confirmPayment(99L))
-                .isInstanceOf(AppException.class)
-                .hasMessageContaining("msg.error.order-not-found");
+        assertThatCode(() -> orderService.confirmPayment(99L)).doesNotThrowAnyException();
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
-    void confirmPayment_pendingOrder_updatesStatusToPaid() {
-        Order order = new Order();
-        order.setId(1L);
-        order.setStatus(OrderStatus.PENDING);
+    void confirmPayment_cancelledOrderWithStock_isReactivated() {
+        cancelledOrderWithStock(true);
+        when(orderRepository.updateStatusIfCurrent(1L, OrderStatus.CANCELLED, OrderStatus.PAID)).thenReturn(1);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(order)).thenReturn(order);
+        orderService.confirmPayment(1L);
 
-        Order result = orderService.confirmPayment(1L);
-
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.PAID);
-        verify(orderRepository).save(order);
+        verify(ticketRepository).updateStatusByOrderId(1L, TicketStatus.ACTIVE);
+        verify(campingRepository).updateStatusByOrderId(1L, TicketStatus.ACTIVE);
+        verify(eventPublisher).publishEvent(new OrderPaidEvent(1L));
     }
 
     @Test
-    void confirmPayment_alreadyPaid_isIdempotent() {
-        Order order = new Order();
-        order.setId(1L);
-        order.setStatus(OrderStatus.PAID);
+    void confirmPayment_cancelledOrderWithoutStock_staysCancelled() {
+        cancelledOrderWithStock(false);
 
+        orderService.confirmPayment(1L);
+
+        verify(orderRepository, never()).updateStatusIfCurrent(1L, OrderStatus.CANCELLED, OrderStatus.PAID);
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void confirmPayment_cancelledOrderReactivatedConcurrently_releasesReservedStock() {
+        Order order = cancelledOrderWithStock(true);
+        when(orderRepository.updateStatusIfCurrent(1L, OrderStatus.CANCELLED, OrderStatus.PAID)).thenReturn(0);
+
+        orderService.confirmPayment(1L);
+
+        verify(stockService).releaseOrderStock(order);
+        verifyNoInteractions(eventPublisher);
+    }
+
+    // ─── cancelPendingOrder ────────────────────────────────────────────────────
+
+    @Test
+    void cancelPendingOrder_pending_releasesStockAndCancelsItems() {
+        Order order = orderWithStatus(OrderStatus.CANCELLED);
+        when(orderRepository.updateStatusIfCurrent(1L, OrderStatus.PENDING, OrderStatus.CANCELLED)).thenReturn(1);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        Order result = orderService.confirmPayment(1L);
+        orderService.cancelPendingOrder(1L);
 
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.PAID);
-        verify(orderRepository, never()).save(any());
+        verify(stockService).releaseOrderStock(order);
+        verify(ticketRepository).updateStatusByOrderId(1L, TicketStatus.CANCELLED);
+        verify(campingRepository).updateStatusByOrderId(1L, TicketStatus.CANCELLED);
+    }
+
+    @Test
+    void cancelPendingOrder_notPending_doesNothing() {
+        when(orderRepository.updateStatusIfCurrent(1L, OrderStatus.PENDING, OrderStatus.CANCELLED)).thenReturn(0);
+
+        orderService.cancelPendingOrder(1L);
+
+        verifyNoInteractions(stockService, ticketRepository, campingRepository);
     }
 
     // ─── getOrdersByUser ───────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -63,16 +64,50 @@ public class StockService {
 
     @Transactional
     public void releaseOrderStock(Order order) {
-        Map<TicketType, Long> tickets = order.getTickets().stream()
+        countTicketsByType(order).forEach((type, count) -> releaseTickets(type, count.intValue()));
+        countCampingsByType(order).forEach((type, count) -> releaseCampings(type, count.intValue()));
+    }
+
+    /**
+     * Vuelve a reservar el stock de un pedido (un pago que llega después de cancelarse el pedido).
+     * No lanza excepciones, para no marcar la transacción para rollback: si falta stock de algún tipo
+     * devuelve lo ya reservado y retorna false.
+     */
+    @Transactional
+    public boolean tryReserveOrderStock(Order order) {
+        Map<TicketType, Long> reservedTickets = new HashMap<>();
+        Map<CampingType, Long> reservedCampings = new HashMap<>();
+
+        for (Map.Entry<TicketType, Long> entry : countTicketsByType(order).entrySet()) {
+            if (ticketTypeRepository.reserveStock(entry.getKey().getId(), entry.getValue().intValue()) == 0) {
+                reservedTickets.forEach((type, count) -> releaseTickets(type, count.intValue()));
+                return false;
+            }
+            reservedTickets.put(entry.getKey(), entry.getValue());
+        }
+
+        for (Map.Entry<CampingType, Long> entry : countCampingsByType(order).entrySet()) {
+            if (campingTypeRepository.reserveStock(entry.getKey().getId(), entry.getValue().intValue()) == 0) {
+                reservedTickets.forEach((type, count) -> releaseTickets(type, count.intValue()));
+                reservedCampings.forEach((type, count) -> releaseCampings(type, count.intValue()));
+                return false;
+            }
+            reservedCampings.put(entry.getKey(), entry.getValue());
+        }
+        return true;
+    }
+
+    private Map<TicketType, Long> countTicketsByType(Order order) {
+        return order.getTickets().stream()
                 .map(Ticket::getTicketType)
                 .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(type -> type, Collectors.counting()));
-        tickets.forEach((type, count) -> releaseTickets(type, count.intValue()));
+    }
 
-        Map<CampingType, Long> campings = order.getCampings().stream()
+    private Map<CampingType, Long> countCampingsByType(Order order) {
+        return order.getCampings().stream()
                 .map(Camping::getCampingType)
                 .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(type -> type, Collectors.counting()));
-        campings.forEach((type, count) -> releaseCampings(type, count.intValue()));
     }
 }

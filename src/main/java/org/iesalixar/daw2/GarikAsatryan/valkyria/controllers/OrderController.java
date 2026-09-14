@@ -84,8 +84,14 @@ public class OrderController {
         // Ejecutamos la lógica de creación de pedido y stock
         Order order = orderService.executeOrder(request, user);
 
-        // Generamos la pasarela de pago
-        String stripeUrl = paymentService.createStripeSession(order);
+        // Generamos la pasarela de pago. Si Stripe falla, se cancela ya el pedido para no retener el stock
+        String stripeUrl;
+        try {
+            stripeUrl = paymentService.createStripeSession(order);
+        } catch (Exception e) {
+            orderService.cancelPendingOrder(order.getId());
+            throw e;
+        }
 
         // Devolvemos la URL para que el frontend haga: window.location.href = res.url;
         return ResponseEntity.ok(ResponseDTO.success(

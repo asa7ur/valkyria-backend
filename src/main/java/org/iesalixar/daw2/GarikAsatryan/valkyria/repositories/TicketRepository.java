@@ -1,9 +1,11 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.repositories;
 
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Ticket;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.TicketStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,4 +23,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     @Query("SELECT t.ticketType.name, COUNT(t) FROM Ticket t WHERE t.status <> 'CANCELLED' GROUP BY t.ticketType.name ORDER BY COUNT(t) DESC")
     List<Object[]> countByType();
+
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Ticket t SET t.status = :status WHERE t.order.id = :orderId")
+    int updateStatusByOrderId(@Param("orderId") Long orderId, @Param("status") TicketStatus status);
 }
