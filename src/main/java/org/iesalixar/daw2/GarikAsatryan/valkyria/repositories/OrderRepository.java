@@ -10,10 +10,12 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    @Query("SELECT o FROM Order o WHERE " +
-            "LOWER(o.user.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.user.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.user.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+    // LEFT JOIN explícito: con o.user.* el join implícito es INNER y excluye los pedidos de invitado
+    @Query("SELECT o FROM Order o LEFT JOIN o.user u WHERE " +
+            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.guestEmail) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
             "LOWER(o.status) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Order> searchOrders(@Param("searchTerm") String searchTerm, Pageable pageable);
 

@@ -2,6 +2,8 @@ package org.iesalixar.daw2.GarikAsatryan.Valkyria.services;
 
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PdfGeneratorService;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.services.QrCodeService;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.services.StockService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.*;
@@ -43,6 +45,8 @@ class OrderServiceTest {
     @Mock private CampingMapper campingMapper;
     @Mock private PaginationComponent paginationComponent;
     @Mock private PdfGeneratorService pdfGeneratorService;
+    @Mock private StockService stockService;
+    @Mock private QrCodeService qrCodeService;
 
     @InjectMocks
     private OrderService orderService;
@@ -106,9 +110,11 @@ class OrderServiceTest {
         TicketCreateDTO tDto = ticketDTO(1L);
         OrderCreateDTO request = new OrderCreateDTO();
         request.setTickets(List.of(tDto));
+        request.setGuestEmail("ignored@example.com");
 
         when(ticketTypeRepository.findById(1L)).thenReturn(Optional.of(type));
-        when(ticketMapper.toEntityFromOrder(eq(tDto), eq(type), any(Order.class), anyString()))
+        when(qrCodeService.newTicketCode()).thenReturn("TKT-CODE");
+        when(ticketMapper.toEntityFromOrder(eq(tDto), eq(type), any(Order.class), eq("TKT-CODE")))
                 .thenReturn(new Ticket());
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -116,6 +122,7 @@ class OrderServiceTest {
 
         assertThat(result.getUser().getEmail()).isEqualTo("user@test.com");
         assertThat(result.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(result.getGuestEmail()).isNull();
     }
 
     @Test
@@ -137,28 +144,46 @@ class OrderServiceTest {
     }
 
     @Test
+    void executeOrder_guestWithoutEmail_throwsBadRequestBeforeReservingStock() {
+        OrderCreateDTO request = new OrderCreateDTO();
+        request.setTickets(List.of(ticketDTO(1L)));
+        request.setGuestEmail(" ");
+
+        assertThatThrownBy(() -> orderService.executeOrder(request, null))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("msg.order.guest-email-required")
+                .extracting("status").isEqualTo(HttpStatus.BAD_REQUEST);
+        verifyNoInteractions(stockService, orderRepository);
+    }
+
+    @Test
     void executeOrder_ticketTypeNotFound_throwsAppException() {
         OrderCreateDTO request = new OrderCreateDTO();
         request.setTickets(List.of(ticketDTO(99L)));
 
         when(ticketTypeRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.executeOrder(request, null))
+        assertThatThrownBy(() -> orderService.executeOrder(request, registeredUser()))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("msg.error.ticket-type-not-found");
     }
 
     @Test
-    void executeOrder_ticketOutOfStock_throwsAppException() {
+    void executeOrder_ticketOutOfStock_throwsAndDoesNotSaveOrder() {
         TicketType type = makeTicketType(0, new BigDecimal("50.00"));
         OrderCreateDTO request = new OrderCreateDTO();
-        request.setTickets(List.of(ticketDTO(1L)));
+        request.setTickets(List.of(ticketDTO(1L), ticketDTO(1L)));
 
         when(ticketTypeRepository.findById(1L)).thenReturn(Optional.of(type));
+        doThrow(AppException.conflict("msg.error.no-stock", "General"))
+                .when(stockService).reserveTickets(type, 2);
 
-        assertThatThrownBy(() -> orderService.executeOrder(request, null))
+        assertThatThrownBy(() -> orderService.executeOrder(request, registeredUser()))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("msg.error.no-stock");
+
+        verify(ticketMapper, never()).toEntityFromOrder(any(), any(), any(), any());
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
@@ -169,56 +194,28 @@ class OrderServiceTest {
 
         when(campingTypeRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.executeOrder(request, null))
+        assertThatThrownBy(() -> orderService.executeOrder(request, registeredUser()))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("msg.error.camping-type-not-found");
     }
 
     @Test
-    void executeOrder_campingOutOfStock_throwsAppException() {
-        CampingType type = makeCampingType(1L, 0, new BigDecimal("100.00"));
-        OrderCreateDTO request = new OrderCreateDTO();
-        request.setTickets(List.of());
-        request.setCampings(List.of(campingDTO(1L)));
-
-        when(campingTypeRepository.findById(1L)).thenReturn(Optional.of(type));
-
-        assertThatThrownBy(() -> orderService.executeOrder(request, null))
-                .isInstanceOf(AppException.class)
-                .hasMessageContaining("msg.error.no-stock");
-    }
-
-    @Test
-    void executeOrder_requestedTicketsExceedStock_throwsAppExceptionImmediately() {
-        TicketType type = makeTicketType(2, new BigDecimal("50.00"));
-        OrderCreateDTO request = new OrderCreateDTO();
-        request.setTickets(List.of(ticketDTO(1L), ticketDTO(1L), ticketDTO(1L))); // 3 solicitados, 2 disponibles
-
-        when(ticketTypeRepository.findById(1L)).thenReturn(Optional.of(type));
-
-        assertThatThrownBy(() -> orderService.executeOrder(request, null))
-                .isInstanceOf(AppException.class)
-                .hasMessageContaining("msg.error.no-stock");
-
-        // El mapper nunca debe llamarse: el error ocurre antes de procesar items
-        verify(ticketMapper, never()).toEntityFromOrder(any(), any(), any(), any());
-    }
-
-    @Test
-    void executeOrder_requestedCampingsExceedStock_throwsAppExceptionImmediately() {
+    void executeOrder_campingOutOfStock_throwsAndDoesNotSaveOrder() {
         CampingType type = makeCampingType(1L, 1, new BigDecimal("100.00"));
         OrderCreateDTO request = new OrderCreateDTO();
         request.setTickets(List.of());
-        request.setCampings(List.of(campingDTO(1L), campingDTO(1L))); // 2 solicitados, 1 disponible
+        request.setCampings(List.of(campingDTO(1L), campingDTO(1L)));
 
         when(campingTypeRepository.findById(1L)).thenReturn(Optional.of(type));
+        doThrow(AppException.conflict("msg.error.no-stock", "Standard"))
+                .when(stockService).reserveCampings(type, 2);
 
-        assertThatThrownBy(() -> orderService.executeOrder(request, null))
+        assertThatThrownBy(() -> orderService.executeOrder(request, registeredUser()))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("msg.error.no-stock");
 
-        // El mapper nunca debe llamarse: el error ocurre antes de procesar items
         verify(campingMapper, never()).toEntityFromOrder(any(), any(), any(), any());
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
@@ -242,23 +239,25 @@ class OrderServiceTest {
     }
 
     @Test
-    void executeOrder_decrementsTicketStockByOne() {
+    void executeOrder_reservesStockOncePerTypeWithTotalQuantity() {
         TicketType type = makeTicketType(5, new BigDecimal("50.00"));
         OrderCreateDTO request = new OrderCreateDTO();
-        request.setTickets(List.of(ticketDTO(1L)));
+        request.setTickets(List.of(ticketDTO(1L), ticketDTO(1L), ticketDTO(1L)));
 
         when(ticketTypeRepository.findById(1L)).thenReturn(Optional.of(type));
-        when(ticketMapper.toEntityFromOrder(any(), any(), any(), any())).thenReturn(new Ticket());
+        when(ticketMapper.toEntityFromOrder(any(), any(), any(), any())).thenAnswer(inv -> new Ticket());
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        orderService.executeOrder(request, registeredUser());
+        Order result = orderService.executeOrder(request, registeredUser());
 
-        assertThat(type.getStockAvailable()).isEqualTo(4);
-        verify(ticketTypeRepository).save(type);
+        verify(stockService).reserveTickets(type, 3);
+        verify(ticketTypeRepository, never()).save(any());
+        verify(qrCodeService, times(3)).newTicketCode();
+        assertThat(result.getTickets()).hasSize(3);
     }
 
     @Test
-    void executeOrder_decrementsCampingStockByOne() {
+    void executeOrder_reservesCampingStock() {
         CampingType type = makeCampingType(1L, 3, new BigDecimal("100.00"));
         OrderCreateDTO request = new OrderCreateDTO();
         request.setTickets(List.of());
@@ -270,8 +269,9 @@ class OrderServiceTest {
 
         orderService.executeOrder(request, registeredUser());
 
-        assertThat(type.getStockAvailable()).isEqualTo(2);
-        verify(campingTypeRepository).save(type);
+        verify(stockService).reserveCampings(type, 1);
+        verify(campingTypeRepository, never()).save(any());
+        verify(qrCodeService).newCampingCode();
     }
 
     @Test
@@ -298,56 +298,30 @@ class OrderServiceTest {
     }
 
     @Test
-    void deleteOrder_restoresTicketStockAndDeletesOrder() {
-        TicketType type = makeTicketType(2, new BigDecimal("50.00"));
-        Ticket ticket = new Ticket();
-        ticket.setTicketType(type);
-
+    void deleteOrder_releasesStockAndDeletesOrder() {
         Order order = new Order();
         order.setId(1L);
-        order.getTickets().add(ticket);
+        order.setStatus(OrderStatus.PAID);
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
         orderService.deleteOrder(1L);
 
-        assertThat(type.getStockAvailable()).isEqualTo(3);
-        verify(ticketTypeRepository).save(type);
+        verify(stockService).releaseOrderStock(order);
         verify(orderRepository).delete(order);
     }
 
     @Test
-    void deleteOrder_restoresCampingStockAndDeletesOrder() {
-        CampingType type = makeCampingType(1L, 1, new BigDecimal("100.00"));
-        Camping camping = new Camping();
-        camping.setCampingType(type);
-
+    void deleteOrder_cancelledOrder_doesNotReleaseStockAgain() {
         Order order = new Order();
         order.setId(2L);
-        order.getCampings().add(camping);
+        order.setStatus(OrderStatus.CANCELLED);
 
         when(orderRepository.findById(2L)).thenReturn(Optional.of(order));
 
         orderService.deleteOrder(2L);
 
-        assertThat(type.getStockAvailable()).isEqualTo(2);
-        verify(campingTypeRepository).save(type);
-        verify(orderRepository).delete(order);
-    }
-
-    @Test
-    void deleteOrder_ticketWithNullType_doesNotSaveTicketType() {
-        Ticket ticket = new Ticket();
-        ticket.setTicketType(null);
-
-        Order order = new Order();
-        order.setId(3L);
-        order.getTickets().add(ticket);
-
-        when(orderRepository.findById(3L)).thenReturn(Optional.of(order));
-
-        assertThatNoException().isThrownBy(() -> orderService.deleteOrder(3L));
-        verify(ticketTypeRepository, never()).save(any());
+        verify(stockService, never()).releaseOrderStock(any());
         verify(orderRepository).delete(order);
     }
 

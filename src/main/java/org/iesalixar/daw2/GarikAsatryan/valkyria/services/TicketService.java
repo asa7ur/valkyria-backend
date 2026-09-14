@@ -5,6 +5,7 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketCreateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketDTO;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.OrderStatus;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Ticket;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.TicketType;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
@@ -35,6 +36,8 @@ public class TicketService {
     private final TicketTypeRepository ticketTypeRepository;
     private final TicketMapper ticketMapper;
     private final PaginationComponent paginationComponent;
+    private final StockService stockService;
+    private final QrCodeService qrCodeService;
 
     /**
      * Obtiene una lista de tickets basada en filtros.
@@ -100,8 +103,11 @@ public class TicketService {
         logger.debug("Tipo de entrada encontrado: {} (Precio: {}, Stock: {})",
                 type.getName(), type.getPrice(), type.getStockAvailable());
 
+        stockService.reserveTickets(type, 1);
+
         Ticket ticket = ticketMapper.toEntity(dto);
         ticket.setTicketType(type);
+        ticket.setQrCode(qrCodeService.newTicketCode());
         logger.debug("Relación con tipo de entrada establecida");
 
         Ticket saved = ticketRepository.save(ticket);
@@ -157,12 +163,21 @@ public class TicketService {
 
         logger.debug("Nuevo tipo de entrada encontrado: {}", type.getName());
 
-        // Paso 3: Actualizar los campos de la entidad
+        // Paso 3: Si cambia el tipo, mover el stock de un tipo a otro
+        TicketType previousType = existing.getTicketType();
+        if (previousType == null || !previousType.getId().equals(type.getId())) {
+            stockService.reserveTickets(type, 1);
+            if (previousType != null) {
+                stockService.releaseTickets(previousType, 1);
+            }
+        }
+
+        // Paso 4: Actualizar los campos de la entidad
         ticketMapper.updateEntityFromDTO(dto, existing);
         existing.setTicketType(type);
         logger.debug("Datos de la entrada actualizados en memoria");
 
-        // Paso 4: Persistir cambios
+        // Paso 5: Persistir cambios
         Ticket updated = ticketRepository.save(existing);
 
         logger.info("✓ Entrada ID {} actualizada correctamente. Nuevo asistente: {} {}, Nuevo tipo: {}",
@@ -199,13 +214,11 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("msg.ticket.not-found", id));
 
-        // 2. Recuperar el tipo y devolver el stock
+        // 2. Devolver el stock (si su pedido está cancelado, ya se devolvió al cancelarlo)
         TicketType type = ticket.getTicketType();
-        if (type != null) {
-            type.setStockAvailable(type.getStockAvailable() + 1);
-            ticketTypeRepository.save(type);
-            logger.info("Stock devuelto para ticket tipo '{}'. Nuevo stock: {}",
-                    type.getName().replaceAll("[\r\n]", "_"), type.getStockAvailable());
+        boolean orderCancelled = ticket.getOrder() != null && ticket.getOrder().getStatus() == OrderStatus.CANCELLED;
+        if (type != null && !orderCancelled) {
+            stockService.releaseTickets(type, 1);
         }
 
         ticketRepository.delete(ticket);

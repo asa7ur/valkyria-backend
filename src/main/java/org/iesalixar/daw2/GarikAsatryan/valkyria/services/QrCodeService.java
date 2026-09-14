@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.util.UUID;
 
 /**
  * Servicio de generación de códigos QR.
@@ -39,6 +40,19 @@ public class QrCodeService {
     private static final int QR_WIDTH = 250;
     private static final int QR_HEIGHT = 250;
     private static final String IMAGE_FORMAT = "PNG";
+
+    // El código es la credencial de acceso al recinto: 122 bits aleatorios (UUID v4) para que no se pueda adivinar
+    public String newTicketCode() {
+        return "TKT-" + randomCode();
+    }
+
+    public String newCampingCode() {
+        return "CMP-" + randomCode();
+    }
+
+    private static String randomCode() {
+        return UUID.randomUUID().toString().replace("-", "").toUpperCase();
+    }
 
     /**
      * Genera un código QR a partir de un texto y devuelve los bytes de la imagen PNG.

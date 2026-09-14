@@ -20,9 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -30,10 +30,9 @@ import java.util.stream.Collectors;
  * Orquesta el proceso completo de compra de entradas y reservas de camping.
  * <p>
  * Responsabilidades principales:
- * - Validación de disponibilidad de stock
+ * - Reserva atómica de stock (vía {@link StockService})
  * - Cálculo de precios totales
  * - Generación de códigos QR únicos para tickets y campings
- * - Actualización automática de inventario
  * - Soporte para usuarios registrados e invitados
  * - Confirmación de pagos tras notificación de Stripe
  * <p>
@@ -55,6 +54,8 @@ public class OrderService {
     private final CampingMapper campingMapper;
     private final PaginationComponent paginationComponent;
     private final PdfGeneratorService pdfGeneratorService;
+    private final StockService stockService;
+    private final QrCodeService qrCodeService;
 
     @Transactional(readOnly = true)
     public List<OrderDTO> getAllOrders(FilterDTO filterDTO) {
@@ -132,242 +133,101 @@ public class OrderService {
     }
 
     /**
-     * Elimina un pedido por su ID.
+     * Elimina un pedido por su ID y devuelve su stock (salvo que ya estuviera cancelado,
+     * porque al cancelarlo ya se devolvió).
      *
      * @param id ID del pedido a eliminar.
      * @throws AppException Si el pedido no existe.
      */
     @Transactional
     public void deleteOrder(Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> AppException.notFound("msg.error.order-not-found", id));
+        Order order = getOrderEntityById(id);
 
-        logger.info("Restaurando stock para el pedido #{}", id);
-
-        // Devolver stock de todos los tickets del pedido
-        for (Ticket ticket : order.getTickets()) {
-            TicketType type = ticket.getTicketType();
-            if (type != null) {
-                type.setStockAvailable(type.getStockAvailable() + 1);
-                ticketTypeRepository.save(type);
-            }
-        }
-
-        // Devolver stock de todos los campings del pedido
-        for (Camping camping : order.getCampings()) {
-            CampingType type = camping.getCampingType();
-            if (type != null) {
-                type.setStockAvailable(type.getStockAvailable() + 1);
-                campingTypeRepository.save(type);
-            }
+        if (order.getStatus() != OrderStatus.CANCELLED) {
+            stockService.releaseOrderStock(order);
         }
 
         orderRepository.delete(order);
-        logger.info("✓ Pedido #{} y su stock han sido eliminados/restaurados", id);
+        logger.info("✓ Pedido #{} eliminado y su stock restaurado", id);
     }
 
     /**
-     * PROCESO PRINCIPAL DE COMPRA - Ejecuta y persiste un pedido completo.
+     * PROCESO PRINCIPAL DE COMPRA - Crea un pedido PENDING reservando el stock.
      * <p>
-     * Este método orquesta todo el flujo de creación de pedido:
-     * 1. Valida disponibilidad de stock para cada item
-     * 2. Genera códigos QR únicos para tickets y campings
-     * 3. Crea las entidades relacionadas (Ticket, Camping)
-     * 4. Calcula el precio total
-     * 5. Actualiza el inventario (descuenta stock)
-     * 6. Persiste el pedido con estado PENDING
+     * 1. Valida el email de contacto (obligatorio para invitados)
+     * 2. Reserva stock por tipo con UPDATE atómicos (sin sobreventa con compras simultáneas)
+     * 3. Crea tickets y campings con su código QR
+     * 4. Calcula el precio total y persiste el pedido
      * <p>
-     * TRANSACCIONAL: Si cualquier paso falla, se revierte toda la operación (rollback).
-     * Esto garantiza que nunca se descuente stock sin crear el pedido, o viceversa.
-     * <p>
-     * Soporta dos tipos de compra:
-     * - Usuario registrado: user != null
-     * - Compra como invitado: user == null, requiere guestEmail
+     * TRANSACCIONAL: si falta stock en cualquier tipo se revierten también las reservas ya hechas.
      *
      * @param request DTO con los items a comprar (tickets y/o campings)
-     * @param user    Usuario registrado (puede ser null para compras de invitado)
+     * @param user    Usuario registrado (null para compras de invitado)
      * @return Pedido creado con estado PENDING (pendiente de pago)
-     * @throws AppException si hay problemas de stock, tipos no encontrados, etc.
+     * @throws AppException si falta stock, un tipo no existe o falta el email del invitado
      */
     @Transactional
     public Order executeOrder(OrderCreateDTO request, User user) {
-        // Log diferenciado según tipo de compra
-        if (user != null) {
-            logger.info("Iniciando procesamiento de pedido para usuario registrado: {}",
-                    user.getEmail().replaceAll("[\r\n]", "_"));
-        } else {
-            logger.info("Iniciando procesamiento de pedido para invitado: {}",
-                    request.getGuestEmail() != null ? request.getGuestEmail().replaceAll("[\r\n]", "_") : null);
+        List<TicketCreateDTO> ticketRequests = request.getTickets() != null ? request.getTickets() : List.of();
+        List<CampingCreateDTO> campingRequests = request.getCampings() != null ? request.getCampings() : List.of();
+
+        if (user == null && (request.getGuestEmail() == null || request.getGuestEmail().isBlank())) {
+            throw AppException.badRequest("msg.order.guest-email-required");
         }
 
-        // Paso 1: Crear la entidad Order con datos iniciales
+        logger.info("Procesando pedido de {} ({} tickets, {} campings)",
+                user != null ? user.getEmail().replaceAll("[\r\n]", "_") : "invitado",
+                ticketRequests.size(), campingRequests.size());
+
         Order order = new Order();
-        order.setUser(user); // Puede ser null (invitado)
-        order.setGuestEmail(request.getGuestEmail()); // Solo se usa si user == null
+        order.setUser(user);
+        order.setGuestEmail(user == null ? request.getGuestEmail() : null);
         order.setOrderDate(LocalDateTime.now());
-        order.setStatus(OrderStatus.PENDING); // Pendiente hasta confirmación de pago
+        order.setStatus(OrderStatus.PENDING);
 
-        logger.debug("Orden inicializada. Estado: {}, Fecha: {}",
-                order.getStatus(), order.getOrderDate());
-
-        // Variable para acumular el precio total
         BigDecimal totalPrice = BigDecimal.ZERO;
 
-        // ========== SECCIÓN 1: PROCESAMIENTO DE TICKETS (ENTRADAS) ==========
+        // ========== TICKETS: reservar stock por tipo y crear las entradas ==========
+        Map<Long, TicketType> ticketTypes = new HashMap<>();
+        ticketRequests.stream()
+                .collect(Collectors.groupingBy(TicketCreateDTO::getTicketTypeId, Collectors.counting()))
+                .forEach((typeId, count) -> {
+                    TicketType type = ticketTypeRepository.findById(typeId)
+                            .orElseThrow(() -> AppException.badRequest("msg.error.ticket-type-not-found"));
+                    stockService.reserveTickets(type, count.intValue());
+                    ticketTypes.put(typeId, type);
+                });
 
-        if (request.getTickets() != null && !request.getTickets().isEmpty()) {
-            // Validación previa: comprobar stock suficiente por tipo antes de procesar
-            Map<Long, Long> ticketCountByType = request.getTickets().stream()
-                    .collect(Collectors.groupingBy(TicketCreateDTO::getTicketTypeId, Collectors.counting()));
-            for (Map.Entry<Long, Long> entry : ticketCountByType.entrySet()) {
-                TicketType type = ticketTypeRepository.findById(entry.getKey())
-                        .orElseThrow(() -> AppException.badRequest("msg.error.ticket-type-not-found"));
-                if (type.getStockAvailable() < entry.getValue()) {
-                    logger.error("Stock insuficiente para ticket tipo '{}': solicitados {}, disponibles {}",
-                            type.getName(), entry.getValue(), type.getStockAvailable());
-                    throw AppException.conflict("msg.error.no-stock", type.getName());
-                }
-            }
-
-            logger.info("Procesando {} tickets para el pedido", request.getTickets().size());
-
-            int ticketIndex = 0;
-            for (TicketCreateDTO tDto : request.getTickets()) {
-                ticketIndex++;
-                logger.debug("Procesando ticket {}/{}: Tipo ID {}",
-                        ticketIndex, request.getTickets().size(), tDto.getTicketTypeId());
-
-                // 1.1: Buscar el tipo de ticket
-                TicketType type = ticketTypeRepository.findById(tDto.getTicketTypeId())
-                        .orElseThrow(() -> {
-                            logger.error("Tipo de ticket con ID {} no encontrado",
-                                    tDto.getTicketTypeId());
-                            return AppException.badRequest("msg.error.ticket-type-not-found");
-                        });
-
-                logger.debug("Tipo de ticket encontrado: {} (Stock: {}, Precio: {})",
-                        type.getName(), type.getStockAvailable(), type.getPrice());
-
-                // 1.2: Validar disponibilidad de stock
-                if (type.getStockAvailable() <= 0) {
-                    logger.error("Sin stock disponible para ticket tipo: {}", type.getName());
-                    throw AppException.conflict("msg.error.no-stock", type.getName());
-                }
-
-                // 1.3: Generar código QR único para este ticket
-                // Formato: TKT-XXXXXXXX (8 caracteres aleatorios en mayúsculas)
-                String qr = "TKT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-                logger.debug("QR generado para ticket: {}", qr);
-
-                // 1.4: Crear entidad Ticket usando el mapper
-                Ticket ticket = ticketMapper.toEntityFromOrder(tDto, type, order, qr);
-
-                // 1.5: Agregar ticket a la colección del pedido
-                order.getTickets().add(ticket);
-
-                // 1.6: Acumular precio al total
-                totalPrice = totalPrice.add(type.getPrice());
-                logger.debug("Precio acumulado después de ticket {}: {} €", ticketIndex, totalPrice);
-
-                // 1.7: Decrementar stock y persistir
-                int newStock = type.getStockAvailable() - 1;
-                type.setStockAvailable(newStock);
-                ticketTypeRepository.save(type);
-                logger.info("Stock actualizado para '{}': {} -> {}",
-                        type.getName(), newStock + 1, newStock);
-            }
-
-            logger.info("Todos los tickets procesados exitosamente. Total tickets: {}",
-                    request.getTickets().size());
-        } else {
-            logger.debug("No hay tickets en este pedido");
+        for (TicketCreateDTO ticketRequest : ticketRequests) {
+            TicketType type = ticketTypes.get(ticketRequest.getTicketTypeId());
+            order.getTickets().add(ticketMapper.toEntityFromOrder(ticketRequest, type, order, qrCodeService.newTicketCode()));
+            totalPrice = totalPrice.add(type.getPrice());
         }
 
-        // ========== SECCIÓN 2: PROCESAMIENTO DE CAMPINGS (RESERVAS) ==========
+        // ========== CAMPINGS: reservar stock por tipo y crear las reservas ==========
+        Map<Long, CampingType> campingTypes = new HashMap<>();
+        campingRequests.stream()
+                .collect(Collectors.groupingBy(CampingCreateDTO::getCampingTypeId, Collectors.counting()))
+                .forEach((typeId, count) -> {
+                    CampingType type = campingTypeRepository.findById(typeId)
+                            .orElseThrow(() -> AppException.badRequest("msg.error.camping-type-not-found"));
+                    stockService.reserveCampings(type, count.intValue());
+                    campingTypes.put(typeId, type);
+                });
 
-        if (request.getCampings() != null && !request.getCampings().isEmpty()) {
-            // Validación previa: comprobar stock suficiente por tipo antes de procesar
-            Map<Long, Long> campingCountByType = request.getCampings().stream()
-                    .collect(Collectors.groupingBy(CampingCreateDTO::getCampingTypeId, Collectors.counting()));
-            for (Map.Entry<Long, Long> entry : campingCountByType.entrySet()) {
-                CampingType type = campingTypeRepository.findById(entry.getKey())
-                        .orElseThrow(() -> AppException.badRequest("msg.error.camping-type-not-found"));
-                if (type.getStockAvailable() < entry.getValue()) {
-                    logger.error("Stock insuficiente para camping tipo '{}': solicitados {}, disponibles {}",
-                            type.getName(), entry.getValue(), type.getStockAvailable());
-                    throw AppException.conflict("msg.error.no-stock", type.getName());
-                }
-            }
-
-            logger.info("Procesando {} campings para el pedido", request.getCampings().size());
-
-            int campingIndex = 0;
-            for (CampingCreateDTO cDto : request.getCampings()) {
-                campingIndex++;
-                logger.debug("Procesando camping {}/{}: Tipo ID {}",
-                        campingIndex, request.getCampings().size(), cDto.getCampingTypeId());
-
-                // 2.1: Buscar el tipo de camping
-                CampingType type = campingTypeRepository.findById(cDto.getCampingTypeId())
-                        .orElseThrow(() -> {
-                            logger.error("Tipo de camping con ID {} no encontrado",
-                                    cDto.getCampingTypeId());
-                            return AppException.badRequest("msg.error.camping-type-not-found");
-                        });
-
-                logger.debug("Tipo de camping encontrado: {} (Stock: {}, Precio: {})",
-                        type.getName(), type.getStockAvailable(), type.getPrice());
-
-                // 2.2: Validar disponibilidad de stock
-                if (type.getStockAvailable() <= 0) {
-                    logger.error("Sin stock disponible para camping tipo: {}", type.getName());
-                    throw AppException.conflict("msg.error.no-stock", type.getName());
-                }
-
-                // 2.3: Generar código QR único para este camping
-                // Formato: CMP-XXXXXXXX (8 caracteres aleatorios en mayúsculas)
-                String qr = "CMP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-                logger.debug("QR generado para camping: {}", qr);
-
-                // 2.4: Crear entidad Camping usando el mapper
-                Camping camping = campingMapper.toEntityFromOrder(cDto, type, order, qr);
-
-                // 2.5: Agregar camping a la colección del pedido
-                order.getCampings().add(camping);
-
-                // 2.6: Acumular precio al total
-                totalPrice = totalPrice.add(type.getPrice());
-                logger.debug("Precio acumulado después de camping {}: {} €",
-                        campingIndex, totalPrice);
-
-                // 2.7: Decrementar stock y persistir
-                int newStock = type.getStockAvailable() - 1;
-                type.setStockAvailable(newStock);
-                campingTypeRepository.save(type);
-                logger.info("Stock actualizado para '{}': {} -> {}",
-                        type.getName(), newStock + 1, newStock);
-            }
-
-            logger.info("Todos los campings procesados exitosamente. Total campings: {}",
-                    request.getCampings().size());
-        } else {
-            logger.debug("No hay campings en este pedido");
+        for (CampingCreateDTO campingRequest : campingRequests) {
+            CampingType type = campingTypes.get(campingRequest.getCampingTypeId());
+            order.getCampings().add(campingMapper.toEntityFromOrder(campingRequest, type, order, qrCodeService.newCampingCode()));
+            totalPrice = totalPrice.add(type.getPrice());
         }
 
         // ========== FINALIZACIÓN DEL PEDIDO ==========
-
-        // Establecer el precio total calculado
         order.setTotalPrice(totalPrice);
-        logger.debug("Precio total del pedido: {} €", totalPrice);
-
-        // Persistir el pedido completo (cascada guardará tickets y campings)
         Order savedOrder = orderRepository.save(order);
 
-        logger.info("✓ Pedido #{} creado exitosamente. Total: {} €, Items: {} tickets + {} campings",
-                savedOrder.getId(),
-                savedOrder.getTotalPrice(),
-                savedOrder.getTickets().size(),
-                savedOrder.getCampings().size());
+        logger.info("✓ Pedido #{} creado. Total: {} €, Items: {} tickets + {} campings",
+                savedOrder.getId(), savedOrder.getTotalPrice(),
+                savedOrder.getTickets().size(), savedOrder.getCampings().size());
 
         return savedOrder;
     }

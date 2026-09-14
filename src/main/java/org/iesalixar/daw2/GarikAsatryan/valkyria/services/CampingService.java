@@ -7,6 +7,7 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.CampingDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Camping;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.CampingType;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.OrderStatus;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.CampingMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.CampingRepository;
@@ -35,6 +36,8 @@ public class CampingService {
     private final CampingTypeRepository campingTypeRepository;
     private final CampingMapper campingMapper;
     private final PaginationComponent paginationComponent;
+    private final StockService stockService;
+    private final QrCodeService qrCodeService;
 
     /**
      * Obtiene una lista de artistas basada en filtros.
@@ -82,9 +85,11 @@ public class CampingService {
         logger.debug("Tipo de camping encontrado: {} (Precio: {}, Stock: {})",
                 type.getName(), type.getPrice(), type.getStockAvailable());
 
-        Camping camping = campingMapper.toEntity(dto);
+        stockService.reserveCampings(type, 1);
 
+        Camping camping = campingMapper.toEntity(dto);
         camping.setCampingType(type);
+        camping.setQrCode(qrCodeService.newCampingCode());
 
         Camping savedCamping = campingRepository.save(camping);
 
@@ -105,6 +110,15 @@ public class CampingService {
         CampingType type = campingTypeRepository.findById(dto.getCampingTypeId())
                 .orElseThrow(() -> AppException.badRequest("msg.camping.type-not-found", dto.getCampingTypeId()));
 
+        // Si cambia el tipo, mover el stock de un tipo a otro
+        CampingType previousType = existing.getCampingType();
+        if (previousType == null || !previousType.getId().equals(type.getId())) {
+            stockService.reserveCampings(type, 1);
+            if (previousType != null) {
+                stockService.releaseCampings(previousType, 1);
+            }
+        }
+
         campingMapper.updateEntityFromDTO(dto, existing);
         existing.setCampingType(type);
 
@@ -120,13 +134,11 @@ public class CampingService {
         Camping camping = campingRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("msg.camping.not-found", id));
 
-        // 2. Recuperar el tipo y devolver el stock
+        // 2. Devolver el stock (si su pedido está cancelado, ya se devolvió al cancelarlo)
         CampingType type = camping.getCampingType();
-        if (type != null) {
-            type.setStockAvailable(type.getStockAvailable() + 1);
-            campingTypeRepository.save(type);
-            logger.info("Stock devuelto para camping tipo '{}'. Nuevo stock: {}",
-                    type.getName().replaceAll("[\r\n]", "_"), type.getStockAvailable());
+        boolean orderCancelled = camping.getOrder() != null && camping.getOrder().getStatus() == OrderStatus.CANCELLED;
+        if (type != null && !orderCancelled) {
+            stockService.releaseCampings(type, 1);
         }
 
         campingRepository.delete(camping);
