@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.FieldMatch;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.IsAdult;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.PasswordPolicy;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,10 +26,7 @@ public class UserRegistrationDTO {
     private String email;
 
     @NotBlank(message = "{msg.validation.required}")
-    @Pattern(
-            regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!]).{8,}$",
-            message = "{msg.validation.password.complexity}"
-    )
+    @Pattern(regexp = PasswordPolicy.REGEX, message = "{msg.validation.password.complexity}")
     private String password;
 
     @NotBlank(message = "{msg.validation.required}")

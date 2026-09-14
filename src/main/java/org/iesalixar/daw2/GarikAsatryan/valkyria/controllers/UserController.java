@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.services.AuthService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.UserService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -21,6 +22,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AuthService authService;
     private final MessageSource messageSource;
 
     /**
@@ -47,14 +49,16 @@ public class UserController {
 
     /**
      * Cambia la contraseña del usuario autenticado.
+     * Los tokens anteriores dejan de valer, así que se devuelve una sesión nueva para este dispositivo.
      */
     @PatchMapping("/me/password")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ResponseDTO<Void>> changeMyPassword(
+    public ResponseEntity<ResponseDTO<AuthResponseDTO>> changeMyPassword(
             Authentication authentication,
             @Valid @RequestBody PasswordChangeDTO dto) {
         userService.changePasswordByEmail(authentication.getName(), dto);
-        return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.user.me.password.success"), null));
+        AuthResponseDTO session = authService.buildAuthResponse(authentication.getName());
+        return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.user.me.password.success"), session));
     }
 
     @PostMapping("/me/email")
@@ -130,16 +134,14 @@ public class UserController {
     }
 
     /**
-     * Endpoint específico para cambiar la contraseña.
-     * Aunque el admin gestiona usuarios, para cambiar la contraseña se suele pedir la actual por seguridad,
-     * o si es un cambio forzado por admin, podrías crear otro método sin la validación de la 'current'.
+     * El administrador establece una nueva contraseña a un usuario (sin conocer la actual).
      */
     @PatchMapping("/{id}/password")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<Void>> changePassword(
+    public ResponseEntity<ResponseDTO<Void>> resetPassword(
             @PathVariable Long id,
-            @Valid @RequestBody PasswordChangeDTO dto) {
-        userService.changePassword(id, dto);
+            @Valid @RequestBody AdminPasswordResetDTO dto) {
+        userService.resetPassword(id, dto);
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.user.password.success"), null));
     }
 

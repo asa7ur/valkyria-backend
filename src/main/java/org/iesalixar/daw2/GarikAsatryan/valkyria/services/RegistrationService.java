@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserRegistrationDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Role;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.User;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.VerificationToken;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.UserMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.RoleRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Servicio de registro de usuarios con verificación por email.
@@ -159,5 +161,53 @@ public class RegistrationService {
         logger.info("✓✓ REGISTRO COMPLETADO exitosamente para {}. " +
                         "Usuario debe verificar su email para activar la cuenta.",
                 savedUser.getEmail().replaceAll("[\r\n]", "_"));
+    }
+
+    /**
+     * Activa la cuenta asociada a un token de activación vigente.
+     * Los tokens de cambio de email no sirven aquí, y los caducados se conservan para permitir el reenvío.
+     *
+     * @throws AppException 400 si el token no existe, no es de activación o ha caducado
+     */
+    @Transactional
+    public void confirmAccount(String token) {
+        VerificationToken verificationToken = verificationTokenService.getVerificationToken(token)
+                .filter(VerificationToken::isActivationToken)
+                .filter(t -> !t.isExpired())
+                .orElseThrow(() -> AppException.badRequest("msg.register.error.invalidToken"));
+
+        User user = verificationToken.getUser();
+        user.setEnabled(true);
+        userRepository.save(user);
+        verificationTokenService.deleteToken(verificationToken);
+        logger.info("Cuenta activada para el usuario con ID {}", user.getId());
+    }
+
+    /**
+     * Reenvía el email de activación con un token nuevo.
+     * <p>
+     * Solo para cuentas que nunca se activaron (tienen un token de activación pendiente, aunque haya caducado):
+     * una cuenta desactivada por un administrador no tiene token y no puede reactivarse por esta vía.
+     * Si el email no corresponde a una cuenta así no hace nada; el controlador responde igual en ambos casos.
+     */
+    @Transactional
+    public void resendActivation(String email) {
+        userRepository.findByEmail(email)
+                .filter(user -> !user.isEnabled())
+                .ifPresent(user -> {
+                    List<VerificationToken> activationTokens = verificationTokenService.getTokensByUser(user).stream()
+                            .filter(VerificationToken::isActivationToken)
+                            .toList();
+                    if (activationTokens.isEmpty()) {
+                        logger.info("Reenvío de activación ignorado: la cuenta {} fue desactivada, no está pendiente de activar",
+                                user.getId());
+                        return;
+                    }
+
+                    activationTokens.forEach(verificationTokenService::deleteToken);
+                    String token = verificationTokenService.createVerificationToken(user);
+                    emailService.sendRegistrationConfirmationEmail(user.getEmail(), user.getFirstName(), token);
+                    logger.info("Email de activación reenviado al usuario con ID {}", user.getId());
+                });
     }
 }

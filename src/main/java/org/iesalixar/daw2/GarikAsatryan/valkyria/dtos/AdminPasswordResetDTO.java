@@ -7,15 +7,11 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.FieldMatch;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.PasswordPolicy;
 
 /**
- * DTO para que un usuario cambie su propia contraseña.
- * Valida que la nueva contraseña y su confirmación coincidan.
+ * DTO para que el administrador establezca una nueva contraseña a un usuario (no conoce la actual).
  */
 @Data
 @FieldMatch(first = "newPassword", second = "confirmPassword", message = "{msg.register.error.passwords-match}")
-public class PasswordChangeDTO {
-
-    @NotBlank(message = "{msg.validation.password.required}")
-    private String currentPassword;
+public class AdminPasswordResetDTO {
 
     @NotBlank(message = "{msg.validation.password.required}")
     @Pattern(regexp = PasswordPolicy.REGEX, message = "{msg.validation.password.complexity}")

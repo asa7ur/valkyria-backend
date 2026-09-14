@@ -53,4 +53,11 @@ public class VerificationToken {
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiryDate);
     }
+
+    /**
+     * Token de activación de cuenta (los de cambio de email llevan el email pendiente).
+     */
+    public boolean isActivationToken() {
+        return this.pendingEmail == null;
+    }
 }

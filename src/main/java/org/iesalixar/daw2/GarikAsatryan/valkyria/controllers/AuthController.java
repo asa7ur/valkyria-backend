@@ -2,15 +2,9 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AuthRequestDTO;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AuthResponseDTO;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.UserRegistrationDTO;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.User;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.utils.JwtUtil;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.services.AuthService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.RegistrationService;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.UserService;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.VerificationTokenService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -19,7 +13,6 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -31,14 +24,9 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
-    private final JwtUtil jwtUtil;
+    private final AuthService authService;
     private final RegistrationService registrationService;
     private final MessageSource messageSource;
-    private final VerificationTokenService verificationTokenService;
-    private final UserService userService;
-
-    @Value("${app.url}")
-    private String appUrl;
 
     @GetMapping("/validate")
     public ResponseEntity<?> validateToken(Authentication authentication) {
@@ -54,64 +42,47 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody AuthRequestDTO authRequest) {
-        // 1. Autenticar credenciales (BadCredentials/Disabled los traduce GlobalExceptionHandler)
+        // BadCredentials/Disabled los traduce GlobalExceptionHandler
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
         );
 
-        // 2. Cargar datos del usuario y generar Token
-        String username = authentication.getName();
-        User userEntity = userService.getUserByEmailEntity(username);
-        final String jwt = jwtUtil.generateToken((UserDetails) authentication.getPrincipal());
+        // Se recarga el usuario: Spring borra la contraseña del principal tras autenticar y el JWT necesita su huella
+        return ResponseEntity.ok(authService.buildAuthResponse(authentication.getName()));
+    }
 
-        // 3. Lógica de redirección para el frontend
-        boolean isAdminOrManager = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
-
-        String redirectUrl = isAdminOrManager ? appUrl + "/admin/dashboard" : appUrl + "/";
-
-        // 4. Devolver DTO completo
-        return ResponseEntity.ok(new AuthResponseDTO(
-                jwt,
-                "Login successful",
-                username,
-                userEntity.getFirstName(),
-                authentication.getAuthorities(),
-                redirectUrl
-        ));
+    /**
+     * Segundo paso del login con Google: canjea el código de un solo uso que el backend puso en la redirección.
+     */
+    @PostMapping("/oauth2/token")
+    public ResponseEntity<AuthResponseDTO> exchangeOAuth2Code(@Valid @RequestBody OAuth2CodeExchangeDTO request) {
+        return ResponseEntity.ok(authService.exchangeOAuth2Code(request.getCode()));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody UserRegistrationDTO registrationDTO) {
         registrationService.registerUser(registrationDTO);
         Map<String, String> response = new HashMap<>();
-        response.put("message", messageSource.getMessage("msg.register.success", null, LocaleContextHolder.getLocale()));
+        response.put("message", getMessage("msg.register.success"));
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Responde siempre lo mismo, exista o no una cuenta pendiente de activar con ese email.
+     */
+    @PostMapping("/resend-activation")
+    public ResponseEntity<ResponseDTO<Void>> resendActivation(@Valid @RequestBody ResendActivationDTO request) {
+        registrationService.resendActivation(request.getEmail());
+        return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.register.resend.sent"), null));
+    }
+
     @GetMapping("/confirm")
-    public ResponseEntity<?> confirmRegistration(@RequestParam("token") String token) {
-        return verificationTokenService.getVerificationToken(token)
-                .map(verificationToken -> {
-                    if (verificationToken.isExpired()) {
-                        Map<String, String> response = new HashMap<>();
-                        response.put("error", messageSource.getMessage("msg.register.error.invalidToken", null, LocaleContextHolder.getLocale()));
-                        return ResponseEntity.badRequest().body(response);
-                    }
+    public ResponseEntity<ResponseDTO<Void>> confirmRegistration(@RequestParam("token") String token) {
+        registrationService.confirmAccount(token);
+        return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.register.confirm.success"), null));
+    }
 
-                    User user = verificationToken.getUser();
-                    user.setEnabled(true);
-                    userService.saveUser(user);
-                    verificationTokenService.deleteToken(verificationToken);
-
-                    Map<String, String> response = new HashMap<>();
-                    response.put("message", "Account activated");
-                    return ResponseEntity.ok(response);
-                })
-                .orElseGet(() -> {
-                    Map<String, String> response = new HashMap<>();
-                    response.put("error", "Invalid token");
-                    return ResponseEntity.badRequest().body(response);
-                });
+    private String getMessage(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 }

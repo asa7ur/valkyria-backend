@@ -2,6 +2,7 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.AdminPasswordResetDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.PasswordChangeDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.ProfileUpdateDTO;
@@ -218,29 +219,18 @@ public class UserService {
         logger.info("Email actualizado correctamente para usuario con ID {}", user.getId());
     }
 
-    // Este método lo mantenemos solo para el proceso de confirmación de token
-    @Transactional
-    public void saveUser(User user) {
-        userRepository.save(user);
-    }
-
     /**
-     * Cambia la contraseña de un usuario tras verificar la contraseña actual.
+     * El administrador establece una nueva contraseña (sin conocer la actual).
+     * Las sesiones abiertas del usuario dejan de ser válidas porque el JWT lleva la huella de la contraseña.
      */
     @Transactional
-    public void changePassword(Long id, PasswordChangeDTO dto) {
+    public void resetPassword(Long id, AdminPasswordResetDTO dto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("msg.error.user-not-found", id));
 
-        // 1. Verificar que la contraseña actual es correcta
-        if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
-            throw AppException.badRequest("msg.error.invalid-current-password");
-        }
-
-        // 2. Cifrar y guardar la nueva contraseña
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         userRepository.save(user);
 
-        logger.info("Contraseña actualizada para el usuario con ID {}", id);
+        logger.info("Contraseña restablecida por un administrador para el usuario con ID {}", id);
     }
 }

@@ -20,6 +20,10 @@ public class AppException extends RuntimeException {
         return new AppException(HttpStatus.BAD_REQUEST, messageKey, args);
     }
 
+    public static AppException unauthorized(String messageKey, Object... args) {
+        return new AppException(HttpStatus.UNAUTHORIZED, messageKey, args);
+    }
+
     public static AppException forbidden(String messageKey, Object... args) {
         return new AppException(HttpStatus.FORBIDDEN, messageKey, args);
     }

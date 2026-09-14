@@ -46,6 +46,9 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
+    @Value("${app.url}")
+    private String appUrl;
+
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
@@ -100,6 +103,9 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
+                        // Google rechazado, email no verificado, state inválido...: se vuelve al login del frontend
+                        .failureHandler((request, response, exception) ->
+                                response.sendRedirect(appUrl + "/login?error=oauth"))
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) ->

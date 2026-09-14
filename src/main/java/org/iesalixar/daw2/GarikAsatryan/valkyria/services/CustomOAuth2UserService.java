@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +27,21 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
+        requireVerifiedEmail(oAuth2User);
         persistenceService.syncUser(oAuth2User);
         return oAuth2User;
+    }
+
+    /**
+     * El email identifica la cuenta local (y la vincula si ya existe), así que debe estar verificado por Google.
+     */
+    public static void requireVerifiedEmail(OAuth2User oAuth2User) {
+        String email = oAuth2User.getAttribute("email");
+        Object verified = oAuth2User.getAttribute("email_verified");
+        if (email == null || email.isBlank() || !Boolean.TRUE.equals(verified)) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("email_not_verified"),
+                    "Google account email is missing or not verified");
+        }
     }
 
     @Service

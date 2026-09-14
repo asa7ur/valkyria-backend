@@ -7,33 +7,31 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
 public class JwtUtil {
+
+    // Huella del hash de la contraseña: al cambiar la contraseña, los tokens anteriores dejan de ser válidos
+    static final String PASSWORD_FINGERPRINT_CLAIM = "pwd";
 
     private final KeyPair jwtKeyPair;
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("roles", userDetails.getAuthorities());
+        extraClaims.put(PASSWORD_FINGERPRINT_CLAIM, passwordFingerprint(userDetails.getPassword()));
         return generateToken(extraClaims, userDetails);
     }
 
@@ -47,25 +45,39 @@ public class JwtUtil {
                 .compact();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    private Claims extractAllClaims(String token) {
+    /**
+     * Verifica la firma y la caducidad del token y devuelve sus claims.
+     *
+     * @throws io.jsonwebtoken.JwtException si la firma no es válida, el token está mal formado o ha caducado
+     */
+    public Claims parseClaims(String token) {
         return Jwts.parser()
                 // IMPORTANTE: Verificamos con la Clave PÚBLICA
                 .verifyWith(jwtKeyPair.getPublic())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    /**
+     * Comprueba que unos claims ya verificados siguen correspondiendo al usuario actual:
+     * mismo email, cuenta activa y misma contraseña que cuando se emitió el token.
+     */
+    public boolean isTokenValid(Claims claims, UserDetails userDetails) {
+        return userDetails.getUsername().equals(claims.getSubject())
+                && userDetails.isEnabled()
+                && passwordFingerprint(userDetails.getPassword())
+                        .equals(claims.get(PASSWORD_FINGERPRINT_CLAIM, String.class));
+    }
+
+    // 96 bits de SHA-256 del hash BCrypt: identifica la contraseña vigente sin exponer su hash en el token
+    private String passwordFingerprint(String passwordHash) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest((passwordHash != null ? passwordHash : "").getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest).substring(0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no disponible", e);
+        }
     }
 }
