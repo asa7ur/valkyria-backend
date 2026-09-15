@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,8 +23,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Base de los tests de integración: contexto completo contra MariaDB en Docker (Testcontainers).
  * Todas las subclases comparten contexto y contenedor, así que no deben declarar beans o mocks propios.
+ * Perfil dev: varios tests usan los datos de prueba de db/seed (artistas, pedidos de invitado...).
  */
 @SpringBootTest
+@ActiveProfiles("dev")
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 public abstract class AbstractIntegrationTest {
