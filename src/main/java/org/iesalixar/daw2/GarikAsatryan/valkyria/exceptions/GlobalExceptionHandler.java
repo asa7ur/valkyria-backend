@@ -64,6 +64,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "msg.auth.account-disabled");
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ResponseDTO<Void>> handleTooManyRequests(TooManyRequestsException ex) {
+        HttpStatus status = HttpStatus.TOO_MANY_REQUESTS;
+        return ResponseEntity.status(status)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ResponseDTO.error(status.value(), getMessage("msg.error.too-many-requests", null)));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ResponseDTO<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Violación de integridad de datos: {}", ex.getMostSpecificCause().getMessage());

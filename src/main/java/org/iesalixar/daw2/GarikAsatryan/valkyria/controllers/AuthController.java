@@ -2,6 +2,8 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.components.RateLimiter;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.components.RateLimiter.Limit;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.AuthService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.RegistrationService;
@@ -11,11 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -23,7 +28,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final Limit FAILED_LOGINS_PER_ACCOUNT = new Limit("login-account", 10, Duration.ofMinutes(15));
+
     private final AuthenticationManager authenticationManager;
+    private final RateLimiter rateLimiter;
     private final AuthService authService;
     private final RegistrationService registrationService;
     private final MessageSource messageSource;
@@ -42,10 +50,21 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody AuthRequestDTO authRequest) {
+        // Además del límite por IP (RateLimitInterceptor), que se puede eludir cambiando de IP,
+        // se limitan los intentos fallidos contra cada cuenta
+        String account = authRequest.getUsername().trim().toLowerCase(Locale.ROOT);
+        rateLimiter.requireAvailable(FAILED_LOGINS_PER_ACCOUNT, account);
+
         // BadCredentials/Disabled los traduce GlobalExceptionHandler
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
-        );
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
+            );
+        } catch (BadCredentialsException e) {
+            rateLimiter.penalize(FAILED_LOGINS_PER_ACCOUNT, account);
+            throw e;
+        }
 
         // Se recarga el usuario: Spring borra la contraseña del principal tras autenticar y el JWT necesita su huella
         return ResponseEntity.ok(authService.buildAuthResponse(authentication.getName()));
