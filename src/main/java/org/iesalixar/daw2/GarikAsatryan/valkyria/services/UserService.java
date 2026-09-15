@@ -25,11 +25,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "firstName", "lastName", "email", "createdDate");
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
@@ -53,7 +57,7 @@ public class UserService {
                 filterDTO.getPage());
 
         // Creamos el objeto Pageable usando el componente común
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         // Realizamos la búsqueda (con o sin término)
         Page<User> userPage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isBlank())

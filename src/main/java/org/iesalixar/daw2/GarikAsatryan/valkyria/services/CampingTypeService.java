@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +28,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CampingTypeService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "name", "price", "stockAvailable");
     private static final Logger logger = LoggerFactory.getLogger(CampingTypeService.class);
 
     // Inyección de dependencias mediante constructor (Lombok @RequiredArgsConstructor)
@@ -41,7 +45,7 @@ public class CampingTypeService {
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         Page<CampingType> campingTypePage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isBlank())
                 ? campingTypeRepository.searchCampingTypes(filterDTO.getSearch(), pageable)

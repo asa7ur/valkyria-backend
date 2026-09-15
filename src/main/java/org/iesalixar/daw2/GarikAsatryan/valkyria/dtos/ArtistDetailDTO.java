@@ -1,5 +1,6 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.dtos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.util.List;
@@ -11,7 +12,10 @@ import java.util.List;
 public class ArtistDetailDTO {
     private Long id;
     private String name;
+    // Datos de contacto: solo se envían a MANAGER/ADMIN (para el público quedan a null y no se serializan)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String phone;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String email;
     private String genre;
     private String country;

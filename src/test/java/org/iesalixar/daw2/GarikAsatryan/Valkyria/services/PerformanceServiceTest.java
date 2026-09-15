@@ -309,7 +309,7 @@ class PerformanceServiceTest {
         Performance perf = new Performance();
         Page<Performance> page = new PageImpl<>(List.of(perf));
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(performanceRepository.findAll(pageable)).thenReturn(page);
         when(performanceMapper.toDTO(perf)).thenReturn(new PerformanceDTO());
 
@@ -329,7 +329,7 @@ class PerformanceServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Performance> page = new PageImpl<>(List.of());
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(performanceRepository.searchPerformances("Metallica", pageable)).thenReturn(page);
 
         List<PerformanceDTO> result = performanceService.getAllPerformances(filter);
@@ -348,7 +348,7 @@ class PerformanceServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Performance> page = new PageImpl<>(List.of());
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(performanceRepository.findAll(pageable)).thenReturn(page);
 
         performanceService.getAllPerformances(filter);

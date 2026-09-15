@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -29,6 +30,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class TicketService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "firstName", "lastName", "documentNumber", "status");
     private static final Logger logger = LoggerFactory.getLogger(TicketService.class);
 
     // Inyección de dependencias mediante constructor (Lombok @RequiredArgsConstructor)
@@ -50,7 +54,7 @@ public class TicketService {
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         Page<Ticket> ticketPage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isBlank())
                 ? ticketRepository.searchTickets(filterDTO.getSearch(), pageable)

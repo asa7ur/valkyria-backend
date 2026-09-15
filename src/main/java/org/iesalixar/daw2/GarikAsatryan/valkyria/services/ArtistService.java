@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +29,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ArtistService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "name", "genre", "country");
     private static final Logger logger = LoggerFactory.getLogger(ArtistService.class);
 
     // Inyección de dependencias mediante constructor (Lombok @RequiredArgsConstructor)
@@ -44,13 +48,13 @@ public class ArtistService {
      * Actualiza el FilterDTO con los metadatos de paginación.
      */
     @Transactional(readOnly = true)
-    public List<ArtistDTO> getAllArtists(FilterDTO filterDTO) {
+    public List<ArtistDTO> getAllArtists(FilterDTO filterDTO, boolean includeContact) {
         logger.info("Iniciando búsqueda de artistas. Término: '{}', Página: {}, Tamaño: {}",
                 filterDTO.getSearch() != null ? filterDTO.getSearch().replaceAll("[\r\n]", "_") : "SIN FILTRO",
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         Page<Artist> artistPage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isBlank())
                 ? artistRepository.searchArtists(filterDTO.getSearch(), pageable)
@@ -64,17 +68,32 @@ public class ArtistService {
 
         return artistPage.getContent().stream()
                 .map(artistMapper::toDTO)
+                .map(dto -> includeContact ? dto : withoutContact(dto))
                 .collect(Collectors.toList());
     }
 
     /**
      * Obtiene el detalle de un artista o lanza excepción si no existe.
+     *
+     * @param includeContact si es false se omiten teléfono y email (datos privados del artista)
      */
     @Transactional(readOnly = true)
-    public ArtistDetailDTO getArtistById(Long id) {
-        return artistRepository.findById(id)
+    public ArtistDetailDTO getArtistById(Long id, boolean includeContact) {
+        ArtistDetailDTO dto = artistRepository.findById(id)
                 .map(artistMapper::toDetailDTO)
                 .orElseThrow(() -> AppException.notFound("msg.artist.not-found", id));
+
+        if (!includeContact) {
+            dto.setPhone(null);
+            dto.setEmail(null);
+        }
+        return dto;
+    }
+
+    private ArtistDTO withoutContact(ArtistDTO dto) {
+        dto.setPhone(null);
+        dto.setEmail(null);
+        return dto;
     }
 
     @Transactional(readOnly = true)

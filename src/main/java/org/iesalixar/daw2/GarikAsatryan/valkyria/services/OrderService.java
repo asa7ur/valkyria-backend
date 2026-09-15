@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +47,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "orderDate", "totalPrice", "status");
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
@@ -71,7 +75,7 @@ public class OrderService {
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         Page<Order> orderPage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isEmpty())
                 ? orderRepository.searchOrders(filterDTO.getSearch(), pageable)

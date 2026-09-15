@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +31,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SponsorService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "name", "contribution");
     private static final Logger logger = LoggerFactory.getLogger(SponsorService.class);
 
     // Inyección de dependencias mediante constructor (Lombok @RequiredArgsConstructor)
@@ -54,7 +58,7 @@ public class SponsorService {
                 filterDTO.getItemsPerPage());
 
         // Creamos el objeto Pageable usando el componente de paginación
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         // Ejecutamos la búsqueda (con o sin filtro de texto)
         Page<Sponsor> sponsorPage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isBlank())

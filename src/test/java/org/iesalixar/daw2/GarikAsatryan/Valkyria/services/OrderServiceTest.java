@@ -541,7 +541,7 @@ class OrderServiceTest {
         Page<Order> page = new PageImpl<>(List.of(order));
         OrderDTO dto = new OrderDTO();
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(orderRepository.findAll(pageable)).thenReturn(page);
         when(orderMapper.toDTO(order)).thenReturn(dto);
 
@@ -562,7 +562,7 @@ class OrderServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Order> page = new PageImpl<>(List.of());
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(orderRepository.searchOrders("John", pageable)).thenReturn(page);
 
         List<OrderDTO> result = orderService.getAllOrders(filter);

@@ -17,11 +17,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TicketTypeService {
+
+    // Campos por los que se puede ordenar el listado paginado
+    private static final Set<String> SORTABLE_FIELDS = Set.of("id", "name", "price", "stockAvailable");
     private static final Logger logger = LoggerFactory.getLogger(TicketTypeService.class);
 
     private final TicketTypeRepository ticketTypeRepository;
@@ -35,7 +39,7 @@ public class TicketTypeService {
                 filterDTO.getPage(),
                 filterDTO.getItemsPerPage());
 
-        Pageable pageable = paginationComponent.createPageable(filterDTO, "id");
+        Pageable pageable = paginationComponent.createPageable(filterDTO, "id", SORTABLE_FIELDS);
 
         Page<TicketType> ticketTypePage = (filterDTO.getSearch() != null && !filterDTO.getSearch().isBlank())
                 ? ticketTypeRepository.searchTicketTypes(filterDTO.getSearch(), pageable)

@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,14 +26,16 @@ public class ArtistController {
     private final MessageSource messageSource;
 
     @GetMapping
-    public ResponseEntity<ResponseDTO<List<ArtistDTO>>> getAllArtists(@ModelAttribute FilterDTO filterDTO) {
-        List<ArtistDTO> data = artistService.getAllArtists(filterDTO);
+    public ResponseEntity<ResponseDTO<List<ArtistDTO>>> getAllArtists(@ModelAttribute FilterDTO filterDTO,
+                                                                     Authentication authentication) {
+        List<ArtistDTO> data = artistService.getAllArtists(filterDTO, canSeeContact(authentication));
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.artist.list.success"), data, filterDTO));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ResponseDTO<ArtistDetailDTO>> getArtistById(@PathVariable Long id) {
-        ArtistDetailDTO data = artistService.getArtistById(id);
+    public ResponseEntity<ResponseDTO<ArtistDetailDTO>> getArtistById(@PathVariable Long id,
+                                                                      Authentication authentication) {
+        ArtistDetailDTO data = artistService.getArtistById(id, canSeeContact(authentication));
         return ResponseEntity.ok(ResponseDTO.success(getMessage("msg.artist.get.success"), data));
     }
 
@@ -107,5 +110,11 @@ public class ArtistController {
      */
     private String getMessage(String key) {
         return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
+    }
+
+    // Teléfono y email del artista son datos privados: solo para el panel de gestión
+    private boolean canSeeContact(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
     }
 }

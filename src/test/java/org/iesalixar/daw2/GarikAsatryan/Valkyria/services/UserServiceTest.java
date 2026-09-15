@@ -77,7 +77,7 @@ class UserServiceTest {
         Page<User> page = new PageImpl<>(List.of(user));
         UserDTO dto = new UserDTO();
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(userRepository.findAll(pageable)).thenReturn(page);
         when(userMapper.toDTO(user)).thenReturn(dto);
 
@@ -97,7 +97,7 @@ class UserServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<User> page = new PageImpl<>(List.of());
 
-        when(paginationComponent.createPageable(filter, "id")).thenReturn(pageable);
+        when(paginationComponent.createPageable(eq(filter), eq("id"), anySet())).thenReturn(pageable);
         when(userRepository.searchUsers("Ana", pageable)).thenReturn(page);
 
         List<UserDTO> result = userService.getAllUsers(filter);
