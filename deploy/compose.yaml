@@ -1,0 +1,75 @@
+# Valkyria - producción (lxc-gasa, ~/valkyria)
+#
+# Estructura esperada en el servidor:
+#   ~/valkyria/compose.yaml                copia de este fichero (la hace deploy.sh)
+#   ~/valkyria/deploy.sh                   copia de deploy/deploy.sh
+#   ~/valkyria/.env                        DB_ROOT_PASSWORD, DB_DATABASE, DB_USER, DB_USER_PASSWORD (permisos 600)
+#   ~/valkyria/backend.env                 secretos del backend (permisos 600)
+#   ~/valkyria/backend/certs/              keystore del JWT
+#   ~/valkyria/data/uploads/               imágenes subidas
+#   ~/valkyria/backend/valkyria/           clon del repo del backend
+#   ~/valkyria/frontend/valkyria-frontend/ clon del repo del frontend
+#
+# Los puertos 4200 y 8080 solo son accesibles desde el nginx (reglas DOCKER-USER en /etc/ufw/after.rules).
+# NUNCA usar "docker compose down -v": borra el volumen con la base de datos.
+
+name: valkyria
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  frontend:
+    build: ./frontend/valkyria-frontend
+    container_name: frontend
+    ports:
+      - "0.0.0.0:4200:80"
+    restart: unless-stopped
+    logging: *logging
+
+  backend:
+    build: ./backend/valkyria
+    container_name: backend
+    env_file:
+      - ./backend.env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      APP_URL: https://valkyria.alixarblue.team
+      APP_BACKEND_URL: https://valkyria.alixarblue.team
+      CORS_ALLOWED_ORIGINS: https://valkyria.alixarblue.team
+    ports:
+      - "0.0.0.0:8080:8080"
+    volumes:
+      - ./backend/certs:/app/certs:ro
+      - ./data/uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  db:
+    # Versión fijada: la misma con la que se creó el volumen de datos
+    image: mariadb:12.2
+    container_name: db
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_USER_PASSWORD}
+    volumes:
+      - database_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  database_data:

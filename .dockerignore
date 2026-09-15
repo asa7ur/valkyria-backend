@@ -10,5 +10,6 @@ certs
 .env
 .env.*
 docker-compose.yml
+deploy
 Dockerfile
 .dockerignore
