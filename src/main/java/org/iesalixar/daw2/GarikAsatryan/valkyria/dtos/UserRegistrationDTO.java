@@ -7,7 +7,6 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.IsAdult;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.validation.PasswordPolicy;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * DTO para el proceso de registro de nuevos usuarios.
@@ -47,8 +46,4 @@ public class UserRegistrationDTO {
     @NotBlank(message = "{msg.validation.required}")
     @Size(max = 30, message = "{msg.validation.size}")
     private String phone;
-
-    boolean enabled;
-
-    List<String> roles;
 }
