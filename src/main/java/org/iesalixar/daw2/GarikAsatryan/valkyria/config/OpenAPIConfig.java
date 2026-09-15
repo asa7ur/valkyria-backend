@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @OpenAPIDefinition(
-        info = @Info(title = "Valkyria API", version = "1.0", description = "API para la gestión del festival Valkyria"),
+        info = @Info(title = "Valkyria API", version = "${app.version}", description = "API para la gestión del festival Valkyria"),
         security = @SecurityRequirement(name = "bearerAuth")
 )
 @SecurityScheme(
