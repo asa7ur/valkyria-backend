@@ -6,13 +6,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.UUID;
 
 /**
@@ -24,7 +31,8 @@ import java.util.UUID;
  * - Conversión a formato WebP para optimizar tamaño y calidad
  * - Uso de UUIDs para nombres únicos y evitar colisiones
  * - Gestión de subdirectorios por tipo de entidad (artists, sponsors, etc.)
- * - Manejo robusto de errores sin romper transacciones de BD
+ * - Coordinado con la transacción de BD: los ficheros nuevos se borran si hay rollback
+ *   y los antiguos solo se borran cuando el cambio se ha confirmado
  */
 @Service
 public class FileService {
@@ -52,182 +60,173 @@ public class FileService {
     // Calidad de compresión WebP (0.0 - 1.0). 0.90 = excelente calidad con buen ratio de compresión
     private static final float OUTPUT_QUALITY = 0.90f;
 
+    // Una imagen se descomprime entera en memoria (4 bytes por píxel): 36 MP ≈ 6000x6000 ≈ 140 MB.
+    // Un PNG de pocos KB puede declarar dimensiones enormes y agotar la memoria del servidor.
+    static final long MAX_PIXELS = 36_000_000L;
+
     /**
-     * Guarda un archivo de imagen generando automáticamente dos versiones optimizadas.
+     * Guarda un archivo de imagen generando automáticamente dos versiones optimizadas (WebP full y thumbnail).
      * <p>
-     * Proceso:
-     * 1. Valida que el archivo no esté vacío y sea una imagen
-     * 2. Crea el directorio de destino si no existe
-     * 3. Genera un UUID único como nombre base
-     * 4. Procesa y guarda la versión Full Size (hasta 1200x1200px)
-     * 5. Procesa y guarda la versión Thumbnail (hasta 600x600px)
-     * <p>
-     * Ambas versiones:
-     * - Se convierten a formato WebP para optimizar peso
-     * - Mantienen el aspect ratio original
-     * - Se comprimen con calidad 90%
+     * La imagen se valida por su contenido real, no por el Content-Type que envía el cliente.
+     * Si se llama dentro de una transacción y esta hace rollback, los ficheros creados se eliminan.
      *
      * @param file      Archivo multipart recibido desde el formulario
      * @param subFolder Subdirectorio dentro de uploads (e.g., "artists", "sponsors")
      * @return Nombre base UUID compartido por ambas versiones, o null si el archivo está vacío
-     * @throws AppException si el archivo no es una imagen o hay error de E/S
+     * @throws AppException 400 si no es una imagen válida o es demasiado grande; 500 si falla la escritura
      */
     public String saveFile(MultipartFile file, String subFolder) {
-        logger.debug("Iniciando proceso de guardado de archivo. SubFolder: {}", subFolder);
-
-        // Validación 1: Verificar que el archivo no esté vacío
         if (file == null || file.isEmpty()) {
             logger.warn("Intento de guardar archivo vacío o null");
             return null;
         }
 
-        logger.debug("Archivo recibido: {} ({} bytes, tipo: {})",
-                file.getOriginalFilename(),
-                file.getSize(),
-                file.getContentType());
+        logger.debug("Archivo recibido: {} bytes, tipo declarado: {}", file.getSize(), file.getContentType());
 
-        // Validación 2: Verificar que sea una imagen
+        // Filtro rápido; la comprobación real es validateImage
         if (file.getContentType() != null && !file.getContentType().startsWith("image/")) {
-            logger.error("Intento de subir archivo que no es imagen: {}", file.getContentType());
             throw AppException.badRequest("msg.file.not-an-image");
         }
 
+        byte[] bytes;
         try {
-            // Paso 1: Preparar el directorio de destino
-            Path uploadPath = Paths.get(uploadDirectory, subFolder);
-            logger.debug("Ruta de destino: {}", uploadPath.toAbsolutePath());
-
-            // Crear directorio si no existe (incluyendo padres)
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-                logger.info("Directorio creado: {}", uploadPath);
-            }
-
-            // Paso 2: Generar nombre único usando UUID
-            String baseName = UUID.randomUUID().toString();
-            logger.debug("UUID generado para archivo: {}", baseName);
-
-            // Paso 3: Leer los bytes del archivo una sola vez
-            byte[] bytes = file.getBytes();
-            logger.debug("Bytes del archivo leídos: {} bytes", bytes.length);
-
-            // Paso 4: Generar Versión Full Size (1200x1200)
-            Path fullPath = uploadPath.resolve(baseName + FULL_SUFFIX);
-            logger.debug("Procesando versión Full Size: {}", fullPath.getFileName());
-            processImage(bytes, FULL_WIDTH, FULL_HEIGHT, fullPath);
-            logger.info("Versión Full Size generada: {} ({}x{})",
-                    fullPath.getFileName(), FULL_WIDTH, FULL_HEIGHT);
-
-            // Paso 5: Generar Versión Thumbnail (600x600)
-            Path thumbPath = uploadPath.resolve(baseName + THUMB_SUFFIX);
-            logger.debug("Procesando versión Thumbnail: {}", thumbPath.getFileName());
-            processImage(bytes, THUMB_WIDTH, THUMB_HEIGHT, thumbPath);
-            logger.info("Versión Thumbnail generada: {} ({}x{})",
-                    thumbPath.getFileName(), THUMB_WIDTH, THUMB_HEIGHT);
-
-            logger.info("Imágenes WebP generadas exitosamente. Base: {}, SubFolder: {}",
-                    baseName, subFolder);
-
-            return baseName;
-
+            bytes = file.getBytes();
         } catch (IOException e) {
-            // Error crítico: no se pudo guardar el archivo
-            logger.error("Error crítico de E/S al guardar imagen en {}/{}: {}",
-                    uploadDirectory, subFolder, e.getMessage(), e);
+            logger.error("No se pudo leer el archivo subido: {}", e.getMessage(), e);
             throw AppException.internal("msg.file.save-error");
         }
+
+        validateImage(bytes);
+
+        // Se procesa en memoria antes de escribir: un fallo de decodificación es culpa del archivo (400),
+        // uno de escritura en disco es del servidor (500)
+        byte[] fullImage = resizeToWebp(bytes, FULL_WIDTH, FULL_HEIGHT);
+        byte[] thumbImage = resizeToWebp(bytes, THUMB_WIDTH, THUMB_HEIGHT);
+
+        String baseName = UUID.randomUUID().toString();
+        Path uploadPath = Paths.get(uploadDirectory, subFolder);
+        try {
+            Files.createDirectories(uploadPath);
+            Files.write(uploadPath.resolve(baseName + FULL_SUFFIX), fullImage);
+            Files.write(uploadPath.resolve(baseName + THUMB_SUFFIX), thumbImage);
+        } catch (IOException e) {
+            logger.error("Error de E/S al guardar imagen en {}/{}: {}", uploadDirectory, subFolder, e.getMessage(), e);
+            deleteNow(baseName, subFolder);
+            throw AppException.internal("msg.file.save-error");
+        }
+
+        // Si la transacción que referencia la imagen falla, el fichero quedaría huérfano
+        runOnRollback(() -> deleteNow(baseName, subFolder));
+
+        logger.info("Imágenes WebP generadas. Base: {}, SubFolder: {}", baseName, subFolder);
+        return baseName;
     }
 
     /**
-     * Método helper privado para procesar y guardar una versión de la imagen.
-     * Encapsula la lógica de Thumbnailator para evitar duplicación de código.
+     * Elimina ambas versiones (Full y Thumbnail) de una imagen.
      * <p>
-     * Thumbnailator automáticamente:
-     * - Mantiene el aspect ratio (no distorsiona)
-     * - Realiza redimensionado solo si la imagen es más grande que el tamaño objetivo
-     * - Aplica algoritmos de alta calidad para el resize
-     *
-     * @param source      Bytes de la imagen original
-     * @param width       Ancho máximo de la imagen resultante
-     * @param height      Alto máximo de la imagen resultante
-     * @param destination Ruta completa donde guardar el archivo procesado
-     * @throws IOException si hay error en el procesamiento o guardado
-     */
-    private void processImage(byte[] source, int width, int height, Path destination) throws IOException {
-        logger.trace("Procesando imagen: {}x{} -> {}", width, height, destination.getFileName());
-
-        Thumbnails.of(new ByteArrayInputStream(source))
-                .size(width, height)                    // Dimensiones máximas (mantiene aspect ratio)
-                .outputFormat("webp")                   // Formato de salida optimizado
-                .outputQuality(OUTPUT_QUALITY)          // Calidad de compresión (0.90 = 90%)
-                .toFile(destination.toFile());          // Guardar en disco
-
-        logger.trace("Imagen procesada correctamente: {}", destination.getFileName());
-    }
-
-    /**
-     * Elimina ambas versiones (Full y Thumbnail) de una imagen del sistema de archivos.
-     * <p>
-     * Comportamiento robusto:
-     * - No lanza excepciones si los archivos no existen (idempotente)
-     * - Registra errores pero no rompe transacciones de BD
-     * - Intenta eliminar ambas versiones independientemente
-     * <p>
-     * Este método es invocado durante eliminaciones de entidades (artistas, sponsors, etc.)
-     * y debe ser tolerante a fallos para no afectar la consistencia de la base de datos.
+     * Dentro de una transacción, el borrado se aplaza hasta que se confirma: si hace rollback,
+     * la BD sigue apuntando a la imagen y esta debe seguir existiendo.
+     * Nunca lanza excepciones (un fallo al borrar solo deja un fichero huérfano).
      *
      * @param baseName  Nombre base UUID del archivo (sin sufijos ni extensión)
      * @param subFolder Subdirectorio donde se encuentran los archivos
      */
     public void deleteFile(String baseName, String subFolder) {
-        // Validación: si no hay nombre base, no hay nada que eliminar
         if (baseName == null || baseName.isEmpty()) {
-            logger.debug("DeleteFile llamado con baseName vacío, se omite operación");
             return;
         }
+        runAfterCommit(() -> deleteNow(baseName, subFolder));
+    }
 
-        logger.info("Iniciando eliminación de archivos con base: {} en {}", baseName, subFolder);
-
-        // Construir la ruta del directorio
-        Path folderPath = Paths.get(uploadDirectory, subFolder);
-        logger.debug("Ruta de búsqueda: {}", folderPath.toAbsolutePath());
-
-        try {
-            // Intentar eliminar versión Full Size
-            Path fullPath = folderPath.resolve(baseName + FULL_SUFFIX);
-            boolean fullDeleted = Files.deleteIfExists(fullPath);
-            if (fullDeleted) {
-                logger.debug("Archivo Full eliminado: {}", fullPath.getFileName());
-            } else {
-                logger.debug("Archivo Full no existía: {}", fullPath.getFileName());
+    /**
+     * Lee solo la cabecera de la imagen para comprobar el formato y las dimensiones sin descomprimirla.
+     */
+    private void validateImage(byte[] bytes) {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            Iterator<ImageReader> readers = input != null ? ImageIO.getImageReaders(input) : null;
+            if (readers == null || !readers.hasNext()) {
+                throw AppException.badRequest("msg.file.not-an-image");
             }
 
-            // Intentar eliminar versión Thumbnail
-            Path thumbPath = folderPath.resolve(baseName + THUMB_SUFFIX);
-            boolean thumbDeleted = Files.deleteIfExists(thumbPath);
-            if (thumbDeleted) {
-                logger.debug("Archivo Thumb eliminado: {}", thumbPath.getFileName());
-            } else {
-                logger.debug("Archivo Thumb no existía: {}", thumbPath.getFileName());
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
+                if (pixels > MAX_PIXELS) {
+                    logger.warn("Imagen rechazada por tamaño: {}x{}", reader.getWidth(0), reader.getHeight(0));
+                    throw AppException.badRequest("msg.file.image-too-large", MAX_PIXELS / 1_000_000);
+                }
+            } finally {
+                reader.dispose();
             }
-
-            // Log informativo si se eliminó al menos uno
-            if (fullDeleted || thumbDeleted) {
-                logger.info("Archivos físicos eliminados correctamente: {} (full: {}, thumb: {})",
-                        baseName, fullDeleted, thumbDeleted);
-            } else {
-                logger.warn("Ningún archivo fue eliminado para base: {}. Posiblemente ya no existían",
-                        baseName);
-            }
-
         } catch (IOException e) {
-            // IMPORTANTE: No lanzamos AppException aquí
-            // Razón: Si el archivo no se puede borrar del disco, no queremos romper
-            // la transacción de base de datos. La entidad debe poder eliminarse aunque
-            // el archivo quede huérfano (se puede limpiar manualmente después).
-            logger.error("Error al eliminar archivos físicos de: {} en {}/{}. " +
-                            "La operación de BD continuará. Motivo: {}",
+            logger.warn("Cabecera de imagen no válida: {}", e.getMessage());
+            throw AppException.badRequest("msg.file.not-an-image");
+        }
+    }
+
+    /**
+     * Redimensiona (manteniendo el aspect ratio y la orientación EXIF) y convierte a WebP.
+     */
+    private byte[] resizeToWebp(byte[] source, int width, int height) {
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            Thumbnails.of(new ByteArrayInputStream(source))
+                    .size(width, height)
+                    .outputFormat("webp")
+                    .outputQuality(OUTPUT_QUALITY)
+                    .toOutputStream(output);
+            return output.toByteArray();
+        } catch (IOException e) {
+            // Cabecera válida pero datos corruptos o formato que no se puede decodificar
+            logger.warn("No se pudo procesar la imagen: {}", e.getMessage(), e);
+            throw AppException.badRequest("msg.file.not-an-image");
+        }
+    }
+
+    private void deleteNow(String baseName, String subFolder) {
+        Path folderPath = Paths.get(uploadDirectory, subFolder);
+        try {
+            boolean fullDeleted = Files.deleteIfExists(folderPath.resolve(baseName + FULL_SUFFIX));
+            boolean thumbDeleted = Files.deleteIfExists(folderPath.resolve(baseName + THUMB_SUFFIX));
+
+            if (fullDeleted || thumbDeleted) {
+                logger.info("Archivos eliminados: {} (full: {}, thumb: {})", baseName, fullDeleted, thumbDeleted);
+            } else {
+                logger.warn("Ningún archivo eliminado para base: {}. Posiblemente ya no existían", baseName);
+            }
+        } catch (IOException e) {
+            // No se propaga: la operación de BD ya está hecha; el fichero queda huérfano
+            logger.error("Error al eliminar archivos de: {} en {}/{}. Motivo: {}",
                     baseName, uploadDirectory, subFolder, e.getMessage(), e);
         }
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
+    }
+
+    private void runOnRollback(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    action.run();
+                }
+            }
+        });
     }
 }

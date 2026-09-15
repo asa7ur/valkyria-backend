@@ -21,7 +21,10 @@ public interface CampingRepository extends JpaRepository<Camping, Long> {
             "LOWER(c.status) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Camping> searchCampings(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    @Query("SELECT c.campingType.name, COUNT(c) FROM Camping c WHERE c.status <> 'CANCELLED' GROUP BY c.campingType.name ORDER BY COUNT(c) DESC")
+    // Mismo criterio que TicketRepository.countByType: no canceladas y sin pedido o con pedido pagado
+    @Query("SELECT c.campingType.name, COUNT(c) FROM Camping c LEFT JOIN c.order o " +
+            "WHERE c.status <> 'CANCELLED' AND (o IS NULL OR o.status = 'PAID') " +
+            "GROUP BY c.campingType.name ORDER BY COUNT(c) DESC")
     List<Object[]> countByType();
 
     @Modifying(flushAutomatically = true)

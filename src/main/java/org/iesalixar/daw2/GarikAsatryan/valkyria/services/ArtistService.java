@@ -162,10 +162,14 @@ public class ArtistService {
 
     @Transactional
     public void deleteArtist(Long id) {
-        if (!artistRepository.existsById(id)) {
-            throw AppException.notFound("msg.artist.not-found", id);
-        }
-        artistRepository.deleteById(id);
+        Artist artist = artistRepository.findById(id)
+                .orElseThrow(() -> AppException.notFound("msg.artist.not-found", id));
+
+        artistRepository.delete(artist);
+
+        // Logo y galería: FileService los borra del disco cuando se confirma la transacción
+        fileService.deleteFile(artist.getLogo(), ARTISTS_FOLDER);
+        artist.getImages().forEach(image -> fileService.deleteFile(image.getImageUrl(), ARTISTS_FOLDER));
     }
 
     @Transactional

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -35,6 +36,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o JOIN FETCH o.user WHERE o.user.email = :email ORDER BY o.orderDate DESC")
     List<Order> findByUserEmailOrderByOrderDateDesc(@Param("email") String email);
+
+    @Query("SELECT COALESCE(SUM(o.totalPrice), 0) FROM Order o WHERE o.status = :status")
+    BigDecimal sumTotalPriceByStatus(@Param("status") OrderStatus status);
 
     @Query("SELECT CAST(o.orderDate AS date), SUM(o.totalPrice) " +
            "FROM Order o WHERE o.status = 'PAID' " +

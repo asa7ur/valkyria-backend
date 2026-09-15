@@ -21,7 +21,14 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             "LOWER(t.status) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Ticket> searchTickets(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    @Query("SELECT t.ticketType.name, COUNT(t) FROM Ticket t WHERE t.status <> 'CANCELLED' GROUP BY t.ticketType.name ORDER BY COUNT(t) DESC")
+    // Vendidas: no canceladas y, si tienen pedido, pagado (las creadas por el admin no tienen pedido)
+    @Query("SELECT COUNT(t) FROM Ticket t LEFT JOIN t.order o " +
+            "WHERE t.status <> 'CANCELLED' AND (o IS NULL OR o.status = 'PAID')")
+    long countSold();
+
+    @Query("SELECT t.ticketType.name, COUNT(t) FROM Ticket t LEFT JOIN t.order o " +
+            "WHERE t.status <> 'CANCELLED' AND (o IS NULL OR o.status = 'PAID') " +
+            "GROUP BY t.ticketType.name ORDER BY COUNT(t) DESC")
     List<Object[]> countByType();
 
     @Modifying(flushAutomatically = true)

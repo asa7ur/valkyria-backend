@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
+    @Query("SELECT COALESCE(SUM(t.stockTotal), 0) FROM TicketType t")
+    long sumStockTotal();
+
     @Query("SELECT t FROM TicketType t WHERE " +
             "LOWER(t.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ")
     Page<TicketType> searchTicketTypes(@Param("searchTerm") String searchTerm, Pageable pageable);
