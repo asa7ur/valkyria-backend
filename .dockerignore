@@ -1,0 +1,14 @@
+# Solo pom.xml y src/ hacen falta para compilar; todo lo demás queda fuera de la imagen
+.git
+.idea
+.vscode
+*.iml
+target
+uploads
+certs
+*.jks
+.env
+.env.*
+docker-compose.yml
+Dockerfile
+.dockerignore
