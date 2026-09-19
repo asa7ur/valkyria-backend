@@ -1,8 +1,8 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.security;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.security;
 
 import com.jayway.jsonpath.JsonPath;
 import jakarta.mail.internet.MimeMessage;
-import org.iesalixar.daw2.GarikAsatryan.Valkyria.AbstractIntegrationTest;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.AbstractIntegrationTest;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.config.OAuth2AuthenticationSuccessHandler;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.config.OAuth2LoginCodeStore;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.User;

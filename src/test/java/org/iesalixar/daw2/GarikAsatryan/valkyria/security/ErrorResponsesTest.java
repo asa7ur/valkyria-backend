@@ -1,6 +1,6 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.security;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.security;
 
-import org.iesalixar.daw2.GarikAsatryan.Valkyria.AbstractIntegrationTest;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 

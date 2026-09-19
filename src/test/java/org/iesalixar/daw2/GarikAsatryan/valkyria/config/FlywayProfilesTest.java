@@ -1,4 +1,4 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.config;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
