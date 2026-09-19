@@ -5,6 +5,7 @@ import com.stripe.net.Webhook;
 import jakarta.mail.BodyPart;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Multipart;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -134,6 +135,7 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
                 .findFirst().orElseThrow();
 
         assertThat(email.getSubject()).startsWith(subjectPrefix);
+        assertThat(((InternetAddress) email.getFrom()[0]).getPersonal()).isEqualTo("Valkyria Festival");
         assertThat(htmlBody(email)).contains(emailText);
 
         // p. ej. "September 19, 2026" / "19 de septiembre de 2026"
