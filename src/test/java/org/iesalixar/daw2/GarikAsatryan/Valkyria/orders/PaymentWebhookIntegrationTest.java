@@ -115,12 +115,12 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
      */
     @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
-            en | Order Confirmation #     | Order ID:      | Attendee:  | Asistente: | MMMM d, yyyy
-            es | Confirmación de Pedido # | ID del pedido: | Asistente: | Attendee:  | d 'de' MMMM 'de' yyyy
+            en | Order Confirmation #     | Order ID:      | Attendee:  | Asistente: | MMMM d, yyyy          | Demo project
+            es | Confirmación de Pedido # | ID del pedido: | Asistente: | Attendee:  | d 'de' MMMM 'de' yyyy | Proyecto de demostración
             """)
     void completedEvent_sendsEmailAndPdfInTheLanguageOfTheOrder(String language, String subjectPrefix, String emailText,
                                                                  String pdfText, String otherLanguagePdfText,
-                                                                 String datePattern) throws Exception {
+                                                                 String datePattern, String demoNotice) throws Exception {
         TicketType type = newTicketType(5);
         type.setNameEn("Pass " + type.getName());
         ticketTypeRepository.save(type);
@@ -136,7 +136,7 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(email.getSubject()).startsWith(subjectPrefix);
         assertThat(((InternetAddress) email.getFrom()[0]).getPersonal()).isEqualTo("Valkyria Festival");
-        assertThat(htmlBody(email)).contains(emailText);
+        assertThat(htmlBody(email)).contains(emailText, "/privacy\"", demoNotice);
 
         // Logo como imagen inline, no incrustado en el HTML (Gmail recorta los HTML de más de ~102 KB)
         assertThat(htmlBody(email)).contains("src=\"cid:logo\"").doesNotContain("base64,").hasSizeLessThan(20_000);

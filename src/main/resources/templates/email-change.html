@@ -90,7 +90,8 @@
     </table>
     <div class="footer">
         <p th:text="#{msg.common.rights}">© 2026 Valkyria Festival. Todos los derechos reservados.</p>
-        <p><span th:text="#{msg.common.city}">Sevilla, España</span> | <a href="#" style="color: #999;" th:text="#{msg.common.privacy}">Política de Privacidad</a></p>
+        <p><span th:text="#{msg.common.city}">Sevilla, España</span> | <a th:href="${privacyUrl}" style="color: #999;" th:text="#{msg.common.privacy}">Política de Privacidad</a></p>
+        <p th:text="#{msg.common.demo}">Proyecto de demostración: el festival es ficticio y las entradas no tienen validez.</p>
     </div>
 </div>
 </body>
