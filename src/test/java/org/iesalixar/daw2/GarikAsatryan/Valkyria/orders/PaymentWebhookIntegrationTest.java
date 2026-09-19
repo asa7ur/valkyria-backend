@@ -138,6 +138,11 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
         assertThat(((InternetAddress) email.getFrom()[0]).getPersonal()).isEqualTo("Valkyria Festival");
         assertThat(htmlBody(email)).contains(emailText);
 
+        // Logo como imagen inline, no incrustado en el HTML (Gmail recorta los HTML de más de ~102 KB)
+        assertThat(htmlBody(email)).contains("src=\"cid:logo\"").doesNotContain("base64,").hasSizeLessThan(20_000);
+        assertThat(parts(email.getContent())).anySatisfy(part ->
+                assertThat(part.getHeader("Content-ID")).containsExactly("<logo>"));
+
         // p. ej. "September 19, 2026" / "19 de septiembre de 2026"
         String orderDate = orderRepository.findById(orderId).orElseThrow().getOrderDate().toLocalDate()
                 .format(DateTimeFormatter.ofPattern(datePattern, Locale.of(language)));
