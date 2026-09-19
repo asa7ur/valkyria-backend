@@ -12,7 +12,6 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.mappers.PerformanceMapper;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.ArtistRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.PerformanceRepository;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.StageRepository;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PerformanceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

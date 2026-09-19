@@ -1,6 +1,5 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.components;
 
-import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.exceptions.AppException;
 import org.junit.jupiter.api.Test;

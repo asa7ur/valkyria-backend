@@ -1,9 +1,5 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderService;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PdfGeneratorService;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.QrCodeService;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.StockService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.*;
