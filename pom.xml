@@ -10,7 +10,7 @@
     </parent>
     <groupId>org.iesalixar.daw2.GarikAsatryan</groupId>
     <artifactId>valkyria</artifactId>
-    <version>1.5.0-SNAPSHOT</version>
+    <version>1.5.0</version>
     <name>valkyria</name>
     <description>Garik Asatryan - Aplicación web para el festival valkyria</description>
     <url/>
