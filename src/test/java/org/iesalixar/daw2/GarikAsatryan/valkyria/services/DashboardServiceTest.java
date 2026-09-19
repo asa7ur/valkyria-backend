@@ -3,7 +3,6 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.DashboardStatsDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.OrderStatus;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.*;
-import org.iesalixar.daw2.GarikAsatryan.valkyria.services.DashboardService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
