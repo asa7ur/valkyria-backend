@@ -2,6 +2,7 @@ package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.config.LocaleConfig;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.*;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.events.OrderPaidEvent;
@@ -17,6 +18,7 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.TicketTypeReposito
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -193,6 +195,8 @@ public class OrderService {
         Order order = new Order();
         order.setUser(user);
         order.setGuestEmail(user == null ? request.getGuestEmail() : null);
+        // El idioma de la web ahora: el email y el PDF se generan más tarde, al confirmar Stripe el pago
+        order.setLanguage(LocaleConfig.supportedOrDefault(LocaleContextHolder.getLocale().getLanguage()).getLanguage());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus(OrderStatus.PENDING);
 

@@ -20,6 +20,9 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.TicketTypeReposito
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,6 +35,7 @@ import org.springframework.http.HttpStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -148,6 +152,27 @@ class OrderServiceTest {
 
         assertThat(result.getUser()).isNull();
         assertThat(result.getGuestEmail()).isEqualTo("guest@example.com");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"en, en", "es, es", "fr, es"})
+    void executeOrder_storesWebLanguageForLaterEmailAndPdf(String requestLanguage, String storedLanguage) {
+        TicketType type = makeTicketType(5, new BigDecimal("50.00"));
+        OrderCreateDTO request = new OrderCreateDTO();
+        request.setTickets(List.of(ticketDTO(1L)));
+
+        when(ticketTypeRepository.findById(1L)).thenReturn(Optional.of(type));
+        when(ticketMapper.toEntityFromOrder(any(), any(), any(), any())).thenReturn(new Ticket());
+        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        LocaleContextHolder.setLocale(Locale.of(requestLanguage));
+        try {
+            Order result = orderService.executeOrder(request, registeredUser());
+            // Un idioma no soportado se guarda como español
+            assertThat(result.getLanguage()).isEqualTo(storedLanguage);
+        } finally {
+            LocaleContextHolder.resetLocaleContext();
+        }
     }
 
     @Test
