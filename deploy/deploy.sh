@@ -25,10 +25,13 @@ if ! cmp -s backend/valkyria/deploy/compose.yaml compose.yaml; then
   echo "==> compose.yaml actualizado desde el repo"
   cp backend/valkyria/deploy/compose.yaml compose.yaml
 fi
-if ! cmp -s backend/valkyria/deploy/deploy.sh deploy.sh; then
-  echo "AVISO: deploy.sh ha cambiado en el repo. Actualízalo al terminar:"
-  echo "       cp backend/valkyria/deploy/deploy.sh deploy.sh"
-fi
+# Los scripts no se sustituyen solos (deploy.sh se está ejecutando ahora mismo)
+for script in deploy.sh backup.sh; do
+  if ! cmp -s "backend/valkyria/deploy/$script" "$script"; then
+    echo "AVISO: $script ha cambiado en el repo. Actualízalo al terminar:"
+    echo "       cp backend/valkyria/deploy/$script $script"
+  fi
+done
 
 # Falla aquí (antes de construir o parar nada) si al .env le falta alguna variable obligatoria
 docker compose config --quiet
