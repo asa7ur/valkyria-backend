@@ -30,6 +30,9 @@ if ! cmp -s backend/valkyria/deploy/deploy.sh deploy.sh; then
   echo "       cp backend/valkyria/deploy/deploy.sh deploy.sh"
 fi
 
+# Falla aquí (antes de construir o parar nada) si al .env le falta alguna variable obligatoria
+docker compose config --quiet
+
 echo "==> Construyendo imágenes"
 docker compose build
 
