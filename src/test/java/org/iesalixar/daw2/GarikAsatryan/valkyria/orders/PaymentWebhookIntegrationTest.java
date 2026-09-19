@@ -1,4 +1,4 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.orders;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.orders;
 
 import com.stripe.Stripe;
 import com.stripe.net.Webhook;
@@ -10,7 +10,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.iesalixar.daw2.GarikAsatryan.Valkyria.AbstractIntegrationTest;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.AbstractIntegrationTest;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.OrderCreateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketCreateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.DocumentType;

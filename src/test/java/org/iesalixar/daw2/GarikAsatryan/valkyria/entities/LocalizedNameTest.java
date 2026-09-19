@@ -1,4 +1,4 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.entities;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.entities;
 
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.CampingType;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.TicketType;

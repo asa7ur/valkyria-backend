@@ -1,4 +1,4 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria;
+package org.iesalixar.daw2.GarikAsatryan.valkyria;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;

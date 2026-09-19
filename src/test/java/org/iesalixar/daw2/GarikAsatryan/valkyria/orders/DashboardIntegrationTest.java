@@ -1,6 +1,6 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.orders;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.orders;
 
-import org.iesalixar.daw2.GarikAsatryan.Valkyria.AbstractIntegrationTest;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.AbstractIntegrationTest;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.DashboardStatsDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.OrderCreateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketCreateDTO;

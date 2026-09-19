@@ -1,4 +1,4 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.components;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.components;
 
 import org.iesalixar.daw2.GarikAsatryan.valkyria.components.PaginationComponent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.FilterDTO;

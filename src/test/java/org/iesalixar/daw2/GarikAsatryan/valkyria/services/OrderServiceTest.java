@@ -1,4 +1,4 @@
-package org.iesalixar.daw2.GarikAsatryan.Valkyria.services;
+package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderService;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.PdfGeneratorService;
