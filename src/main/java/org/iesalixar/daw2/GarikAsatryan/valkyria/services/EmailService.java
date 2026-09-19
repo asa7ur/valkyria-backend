@@ -1,5 +1,6 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Order;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
-import java.util.Base64;
 import java.util.Locale;
 
 @Service
@@ -24,6 +24,9 @@ import java.util.Locale;
 public class EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
+    private static final String LOGO_CONTENT_ID = "logo";
+    private static final String LOGO_SRC = "cid:" + LOGO_CONTENT_ID;
 
     private final JavaMailSender mailSender;
     private final MessageSource messageSource;
@@ -47,14 +50,12 @@ public class EmailService {
         // El enlace de activación debe llevar al usuario a Angular
         String confirmationUrl = frontendUrl + "/confirm-registration?token=" + token;
 
-        String logoUrl = getLogoAsBase64();
-
         // 2. Preparar el contexto de Thymeleaf (las variables que usa el HTML)
         // context.setVariable("nombre_en_html", valor_en_java)
         Context context = new Context(LocaleContextHolder.getLocale());
         context.setVariable("firstName", firstName);
         context.setVariable("activationUrl", confirmationUrl);
-        context.setVariable("logoUrl", logoUrl);
+        context.setVariable("logoUrl", LOGO_SRC);
 
         // 3. CProcesar el archivo HTML
         // "email-activation" debe ser el nombre del archivo .html en src/main/resources/templates/
@@ -71,6 +72,7 @@ public class EmailService {
             // El asunto se sigue obteniendo de messages.properties
             helper.setSubject(getMessage("msg.register.email.subject", null));
             helper.setText(body, true); // true = enviar como HTML
+            addLogo(helper);
 
             mailSender.send(message);
             logger.info("Correo de activación HTML enviado a: {}", to.replaceAll("[\r\n]", "_"));
@@ -88,12 +90,11 @@ public class EmailService {
         logger.info("Enviando correo de verificación de cambio de email a: {}", to.replaceAll("[\r\n]", "_"));
 
         String confirmationUrl = frontendUrl + "/confirm-email?token=" + token;
-        String logoUrl = getLogoAsBase64();
 
         Context context = new Context(LocaleContextHolder.getLocale());
         context.setVariable("firstName", firstName);
         context.setVariable("confirmationUrl", confirmationUrl);
-        context.setVariable("logoUrl", logoUrl);
+        context.setVariable("logoUrl", LOGO_SRC);
 
         String body = templateEngine.process("email-change", context);
 
@@ -104,6 +105,7 @@ public class EmailService {
             helper.setTo(to);
             helper.setSubject(getMessage("msg.email.change.subject", null));
             helper.setText(body, true);
+            addLogo(helper);
             mailSender.send(message);
             logger.info("Correo de cambio de email enviado a: {}", to.replaceAll("[\r\n]", "_"));
         } catch (Exception e) {
@@ -123,13 +125,12 @@ public class EmailService {
         String firstName = (order.getUser() != null)
                 ? order.getUser().getFirstName()
                 : getMessage("msg.email.order.guest-name", null, locale);
-        String logoUrl = getLogoAsBase64();
 
         // 1. Preparar el contexto de Thymeleaf
         Context context = new Context(locale);
         context.setVariable("firstName", firstName);
         context.setVariable("orderId", order.getId());
-        context.setVariable("logoUrl", logoUrl);
+        context.setVariable("logoUrl", LOGO_SRC);
 
         // 2. Procesar el template HTML
         String body = templateEngine.process("email-order-confirmation", context);
@@ -143,6 +144,7 @@ public class EmailService {
             helper.setTo(to);
             helper.setSubject(getMessage("msg.order.email.subject", new Object[]{String.valueOf(order.getId())}, locale));
             helper.setText(body, true); // true = enviar como HTML
+            addLogo(helper);
 
             String fileName = "Valkyria_Ticket_Order_" + order.getId() + ".pdf";
             helper.addAttachment(fileName, new ByteArrayResource(pdfBytes));
@@ -164,13 +166,9 @@ public class EmailService {
         return messageSource.getMessage(key, args, locale);
     }
 
-    private String getLogoAsBase64() {
-        try {
-            byte[] bytes = new ClassPathResource("logo.png").getInputStream().readAllBytes();
-            return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes);
-        } catch (Exception e) {
-            logger.warn("No se pudo cargar el logo desde el classpath: {}", e.getMessage());
-            return "";
-        }
+    // El logo va como imagen adjunta "inline" (Content-ID) y no incrustado en base64 dentro del HTML:
+    // así el HTML pesa unos KB y Gmail no lo recorta (lo hace a partir de ~102 KB). Debe añadirse después de setText
+    private void addLogo(MimeMessageHelper helper) throws MessagingException {
+        helper.addInline(LOGO_CONTENT_ID, new ClassPathResource("logo.png"), "image/png");
     }
 }
