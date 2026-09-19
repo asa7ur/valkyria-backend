@@ -528,7 +528,7 @@ class OrderServiceTest {
         Order order = orderOwnedBy("owner@email.com");
         byte[] pdf = {1, 2, 3};
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(pdfGeneratorService.generateOrderPdf(order)).thenReturn(pdf);
+        when(pdfGeneratorService.generateOrderPdf(eq(order), any(Locale.class))).thenReturn(pdf);
 
         assertThat(orderService.generateOrderPdfForUser(1L, "owner@email.com")).isEqualTo(pdf);
     }
@@ -540,7 +540,7 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.generateOrderPdfForUser(1L, "other@email.com"))
                 .isInstanceOf(AppException.class)
                 .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
-        verify(pdfGeneratorService, never()).generateOrderPdf(any());
+        verify(pdfGeneratorService, never()).generateOrderPdf(any(), any());
     }
 
     @Test
@@ -550,7 +550,7 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.generateOrderPdfForUser(1L, "someone@email.com"))
                 .isInstanceOf(AppException.class)
                 .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
-        verify(pdfGeneratorService, never()).generateOrderPdf(any());
+        verify(pdfGeneratorService, never()).generateOrderPdf(any(), any());
     }
 
     // ─── getAllOrders ──────────────────────────────────────────────────────────

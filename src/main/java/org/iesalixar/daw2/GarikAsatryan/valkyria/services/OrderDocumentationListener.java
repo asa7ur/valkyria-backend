@@ -1,6 +1,7 @@
 package org.iesalixar.daw2.GarikAsatryan.valkyria.services;
 
 import lombok.RequiredArgsConstructor;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.config.LocaleConfig;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Order;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.events.OrderPaidEvent;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.repositories.OrderRepository;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.Locale;
 
 /**
  * Genera el PDF y envía el email de un pedido pagado.
@@ -45,8 +48,10 @@ public class OrderDocumentationListener {
                 return;
             }
 
-            byte[] pdfBytes = pdfGeneratorService.generateOrderPdf(order);
-            emailService.sendOrderConfirmationEmail(order, pdfBytes);
+            // El idioma de la web al comprar: este hilo no tiene petición y usaría el del sistema operativo
+            Locale locale = LocaleConfig.supportedOrDefault(order.getLanguage());
+            byte[] pdfBytes = pdfGeneratorService.generateOrderPdf(order, locale);
+            emailService.sendOrderConfirmationEmail(order, pdfBytes, locale);
             logger.info("✓ Documentación del pedido #{} enviada", orderId);
         } catch (Exception e) {
             logger.error("⚠ Error al enviar la documentación del pedido #{} (el pago SÍ está confirmado): {}",

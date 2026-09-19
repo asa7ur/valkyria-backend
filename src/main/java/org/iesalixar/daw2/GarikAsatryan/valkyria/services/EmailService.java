@@ -17,6 +17,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.util.Base64;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -108,15 +109,21 @@ public class EmailService {
         }
     }
 
-    public void sendOrderConfirmationEmail(Order order, byte[] pdfBytes) throws Exception {
-        logger.info("Iniciando envío de confirmación de pedido HTML #{}", order.getId());
+    /**
+     * Se envía en segundo plano al confirmar Stripe el pago, sin petición del usuario de la que sacar el idioma:
+     * por eso lo recibe explícitamente (el que se guardó en el pedido).
+     */
+    public void sendOrderConfirmationEmail(Order order, byte[] pdfBytes, Locale locale) throws Exception {
+        logger.info("Iniciando envío de confirmación de pedido HTML #{} ({})", order.getId(), locale.getLanguage());
 
         String to = (order.getUser() != null) ? order.getUser().getEmail() : order.getGuestEmail();
-        String firstName = (order.getUser() != null) ? order.getUser().getFirstName() : "Invitado";
+        String firstName = (order.getUser() != null)
+                ? order.getUser().getFirstName()
+                : getMessage("msg.email.order.guest-name", null, locale);
         String logoUrl = getLogoAsBase64();
 
         // 1. Preparar el contexto de Thymeleaf
-        Context context = new Context(LocaleContextHolder.getLocale());
+        Context context = new Context(locale);
         context.setVariable("firstName", firstName);
         context.setVariable("orderId", order.getId());
         context.setVariable("logoUrl", logoUrl);
@@ -131,7 +138,7 @@ public class EmailService {
             helper.setFrom(mailFrom);
 
             helper.setTo(to);
-            helper.setSubject(getMessage("msg.order.email.subject", new Object[]{String.valueOf(order.getId())}));
+            helper.setSubject(getMessage("msg.order.email.subject", new Object[]{String.valueOf(order.getId())}, locale));
             helper.setText(body, true); // true = enviar como HTML
 
             String fileName = "Valkyria_Ticket_Order_" + order.getId() + ".pdf";
@@ -145,8 +152,13 @@ public class EmailService {
         }
     }
 
+    // Idioma de la petición en curso (emails que se envían mientras el usuario espera la respuesta)
     private String getMessage(String key, Object[] args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+        return getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+
+    private String getMessage(String key, Object[] args, Locale locale) {
+        return messageSource.getMessage(key, args, locale);
     }
 
     private String getLogoAsBase64() {

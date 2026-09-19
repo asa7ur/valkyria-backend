@@ -142,7 +142,8 @@ public class OrderService {
             throw AppException.forbidden("msg.error.unauthorized-access");
         }
 
-        return pdfGeneratorService.generateOrderPdf(order);
+        // Descarga desde "Mis pedidos": en el idioma que el usuario tiene ahora en la web
+        return pdfGeneratorService.generateOrderPdf(order, LocaleContextHolder.getLocale());
     }
 
     /**
