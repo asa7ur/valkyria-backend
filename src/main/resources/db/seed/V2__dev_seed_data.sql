@@ -142,75 +142,75 @@ VALUES
 -- =========================================================================
 INSERT INTO performances (start_time, end_time, artist_id, stage_id) VALUES
 -- Stage 1: Asgard del Sur (15000)
-('2026-08-06 21:00:00', '2026-08-06 21:50:00', (SELECT id FROM artists WHERE name = 'Power Trip'), 1),
-('2026-08-06 22:20:00', '2026-08-06 23:20:00', (SELECT id FROM artists WHERE name = 'Pantera'), 1),
-('2026-08-06 23:50:00', '2026-08-07 01:00:00', (SELECT id FROM artists WHERE name = 'Iron Maiden'), 1),
-('2026-08-07 01:30:00', '2026-08-07 03:00:00', (SELECT id FROM artists WHERE name = 'Metallica'), 1),
+('2027-08-05 21:00:00', '2027-08-05 21:50:00', (SELECT id FROM artists WHERE name = 'Power Trip'), 1),
+('2027-08-05 22:20:00', '2027-08-05 23:20:00', (SELECT id FROM artists WHERE name = 'Pantera'), 1),
+('2027-08-05 23:50:00', '2027-08-06 01:00:00', (SELECT id FROM artists WHERE name = 'Iron Maiden'), 1),
+('2027-08-06 01:30:00', '2027-08-06 03:00:00', (SELECT id FROM artists WHERE name = 'Metallica'), 1),
 
 -- Stage 2: Valhalla de Triana (10000)
-('2026-08-06 21:30:00', '2026-08-06 22:30:00', (SELECT id FROM artists WHERE name = 'Mastodon'), 2),
-('2026-08-06 23:00:00', '2026-08-07 00:15:00', (SELECT id FROM artists WHERE name = 'Alice in Chains'), 2),
-('2026-08-07 00:45:00', '2026-08-07 02:15:00', (SELECT id FROM artists WHERE name = 'Judas Priest'), 2),
+('2027-08-05 21:30:00', '2027-08-05 22:30:00', (SELECT id FROM artists WHERE name = 'Mastodon'), 2),
+('2027-08-05 23:00:00', '2027-08-06 00:15:00', (SELECT id FROM artists WHERE name = 'Alice in Chains'), 2),
+('2027-08-06 00:45:00', '2027-08-06 02:15:00', (SELECT id FROM artists WHERE name = 'Judas Priest'), 2),
 
 -- Stage 3: Fenrir del Al-Ándalus (8000)
-('2026-08-06 21:30:00', '2026-08-06 22:30:00', (SELECT id FROM artists WHERE name = 'Derby Motoretas Burrito Kachimba'), 3),
-('2026-08-06 23:00:00', '2026-08-07 00:15:00', (SELECT id FROM artists WHERE name = 'Acid Bath'), 3),
-('2026-08-07 00:45:00', '2026-08-07 02:00:00', (SELECT id FROM artists WHERE name = 'Lamb of God'), 3),
+('2027-08-05 21:30:00', '2027-08-05 22:30:00', (SELECT id FROM artists WHERE name = 'Derby Motoretas Burrito Kachimba'), 3),
+('2027-08-05 23:00:00', '2027-08-06 00:15:00', (SELECT id FROM artists WHERE name = 'Acid Bath'), 3),
+('2027-08-06 00:45:00', '2027-08-06 02:00:00', (SELECT id FROM artists WHERE name = 'Lamb of God'), 3),
 
 -- Stage 4: Drakkar de Guadalquivir (5000)
-('2026-08-06 21:30:00', '2026-08-06 22:30:00', (SELECT id FROM artists WHERE name = 'Amira Elfeky'), 4),
-('2026-08-06 23:00:00', '2026-08-07 00:15:00', (SELECT id FROM artists WHERE name = 'Danheim'), 4),
-('2026-08-07 00:45:00', '2026-08-07 02:00:00', (SELECT id FROM artists WHERE name = 'Wardruna'), 4),
+('2027-08-05 21:30:00', '2027-08-05 22:30:00', (SELECT id FROM artists WHERE name = 'Amira Elfeky'), 4),
+('2027-08-05 23:00:00', '2027-08-06 00:15:00', (SELECT id FROM artists WHERE name = 'Danheim'), 4),
+('2027-08-06 00:45:00', '2027-08-06 02:00:00', (SELECT id FROM artists WHERE name = 'Wardruna'), 4),
 
 
 -- =========================================================================
 -- DÍA 2: 7 de Agosto de 2026 (Nu-Metal, Alternativo & Modern Metalcore)
 -- =========================================================================
 -- Stage 1: Asgard del Sur (15000)
-('2026-08-07 21:00:00', '2026-08-07 21:50:00', (SELECT id FROM artists WHERE name = 'Spiritbox'), 1),
-('2026-08-07 22:20:00', '2026-08-07 23:20:00', (SELECT id FROM artists WHERE name = 'Bring Me The Horizon'), 1),
-('2026-08-07 23:50:00', '2026-08-08 01:00:00', (SELECT id FROM artists WHERE name = 'Linkin Park'), 1),
-('2026-08-08 01:30:00', '2026-08-08 03:00:00', (SELECT id FROM artists WHERE name = 'Slipknot'), 1),
+('2027-08-06 21:00:00', '2027-08-06 21:50:00', (SELECT id FROM artists WHERE name = 'Spiritbox'), 1),
+('2027-08-06 22:20:00', '2027-08-06 23:20:00', (SELECT id FROM artists WHERE name = 'Bring Me The Horizon'), 1),
+('2027-08-06 23:50:00', '2027-08-07 01:00:00', (SELECT id FROM artists WHERE name = 'Linkin Park'), 1),
+('2027-08-07 01:30:00', '2027-08-07 03:00:00', (SELECT id FROM artists WHERE name = 'Slipknot'), 1),
 
 -- Stage 2: Valhalla de Triana (10000)
-('2026-08-07 21:30:00', '2026-08-07 22:30:00', (SELECT id FROM artists WHERE name = 'Three Days Grace'), 2),
-('2026-08-07 23:00:00', '2026-08-08 00:15:00', (SELECT id FROM artists WHERE name = 'Deftones'), 2),
-('2026-08-08 00:45:00', '2026-08-08 02:15:00', (SELECT id FROM artists WHERE name = 'Evanescence'), 2),
+('2027-08-06 21:30:00', '2027-08-06 22:30:00', (SELECT id FROM artists WHERE name = 'Three Days Grace'), 2),
+('2027-08-06 23:00:00', '2027-08-07 00:15:00', (SELECT id FROM artists WHERE name = 'Deftones'), 2),
+('2027-08-07 00:45:00', '2027-08-07 02:15:00', (SELECT id FROM artists WHERE name = 'Evanescence'), 2),
 
 -- Stage 3: Fenrir del Al-Ándalus (8000)
-('2026-08-07 21:30:00', '2026-08-07 22:30:00', (SELECT id FROM artists WHERE name = 'Loathe'), 3),
-('2026-08-07 23:00:00', '2026-08-08 00:15:00', (SELECT id FROM artists WHERE name = 'Jinjer'), 3),
-('2026-08-08 00:45:00', '2026-08-08 02:00:00', (SELECT id FROM artists WHERE name = 'Knocked Loose'), 3),
+('2027-08-06 21:30:00', '2027-08-06 22:30:00', (SELECT id FROM artists WHERE name = 'Loathe'), 3),
+('2027-08-06 23:00:00', '2027-08-07 00:15:00', (SELECT id FROM artists WHERE name = 'Jinjer'), 3),
+('2027-08-07 00:45:00', '2027-08-07 02:00:00', (SELECT id FROM artists WHERE name = 'Knocked Loose'), 3),
 
 -- Stage 4: Drakkar de Guadalquivir (5000)
-('2026-08-07 21:30:00', '2026-08-07 22:30:00', (SELECT id FROM artists WHERE name = 'Faetooth'), 4),
-('2026-08-07 23:00:00', '2026-08-08 00:15:00', (SELECT id FROM artists WHERE name = 'Deafheaven'), 4),
-('2026-08-08 00:45:00', '2026-08-08 02:00:00', (SELECT id FROM artists WHERE name = 'Slaughter to Prevail'), 4),
+('2027-08-06 21:30:00', '2027-08-06 22:30:00', (SELECT id FROM artists WHERE name = 'Faetooth'), 4),
+('2027-08-06 23:00:00', '2027-08-07 00:15:00', (SELECT id FROM artists WHERE name = 'Deafheaven'), 4),
+('2027-08-07 00:45:00', '2027-08-07 02:00:00', (SELECT id FROM artists WHERE name = 'Slaughter to Prevail'), 4),
 
 
 -- =========================================================================
 -- DÍA 3: 8 de agosto de 2026 (Prog, Industrial, Extremo & Avant-Garde)
 -- =========================================================================
 -- Stage 1: Asgard del Sur (15000)
-('2026-08-08 21:00:00', '2026-08-08 21:50:00', (SELECT id FROM artists WHERE name = 'Meshuggah'), 1),
-('2026-08-08 22:20:00', '2026-08-08 23:20:00', (SELECT id FROM artists WHERE name = 'Gojira'), 1),
-('2026-08-08 23:50:00', '2026-08-09 01:00:00', (SELECT id FROM artists WHERE name = 'Tool'), 1),
-('2026-08-09 01:30:00', '2026-08-09 03:00:00', (SELECT id FROM artists WHERE name = 'Rammstein'), 1),
+('2027-08-07 21:00:00', '2027-08-07 21:50:00', (SELECT id FROM artists WHERE name = 'Meshuggah'), 1),
+('2027-08-07 22:20:00', '2027-08-07 23:20:00', (SELECT id FROM artists WHERE name = 'Gojira'), 1),
+('2027-08-07 23:50:00', '2027-08-08 01:00:00', (SELECT id FROM artists WHERE name = 'Tool'), 1),
+('2027-08-08 01:30:00', '2027-08-08 03:00:00', (SELECT id FROM artists WHERE name = 'Rammstein'), 1),
 
 -- Stage 2: Valhalla de Triana (10000)
-('2026-08-08 21:30:00', '2026-08-08 22:30:00', (SELECT id FROM artists WHERE name = 'Porcupine Tree'), 2),
-('2026-08-08 23:00:00', '2026-08-09 00:15:00', (SELECT id FROM artists WHERE name = 'Opeth'), 2),
-('2026-08-09 00:45:00', '2026-08-09 02:15:00', (SELECT id FROM artists WHERE name = 'Ghost'), 2),
+('2027-08-07 21:30:00', '2027-08-07 22:30:00', (SELECT id FROM artists WHERE name = 'Porcupine Tree'), 2),
+('2027-08-07 23:00:00', '2027-08-08 00:15:00', (SELECT id FROM artists WHERE name = 'Opeth'), 2),
+('2027-08-08 00:45:00', '2027-08-08 02:15:00', (SELECT id FROM artists WHERE name = 'Ghost'), 2),
 
 -- Stage 3: Fenrir del Al-Ándalus (8000)
-('2026-08-08 21:30:00', '2026-08-08 22:30:00', (SELECT id FROM artists WHERE name = 'Fit For An Autopsy'), 3),
-('2026-08-08 23:00:00', '2026-08-09 00:15:00', (SELECT id FROM artists WHERE name = 'Lorna Shore'), 3),
-('2026-08-09 00:45:00', '2026-08-09 02:00:00', (SELECT id FROM artists WHERE name = 'Behemoth'), 3),
+('2027-08-07 21:30:00', '2027-08-07 22:30:00', (SELECT id FROM artists WHERE name = 'Fit For An Autopsy'), 3),
+('2027-08-07 23:00:00', '2027-08-08 00:15:00', (SELECT id FROM artists WHERE name = 'Lorna Shore'), 3),
+('2027-08-08 00:45:00', '2027-08-08 02:00:00', (SELECT id FROM artists WHERE name = 'Behemoth'), 3),
 
 -- Stage 4: Drakkar de Guadalquivir (5000)
-('2026-08-08 21:30:00', '2026-08-08 22:30:00', (SELECT id FROM artists WHERE name = 'Whitechapel'), 4),
-('2026-08-08 23:00:00', '2026-08-09 00:15:00', (SELECT id FROM artists WHERE name = 'Imperial Triumphant'), 4),
-('2026-08-09 00:45:00', '2026-08-09 02:00:00', (SELECT id FROM artists WHERE name = 'Igorrr'), 4);
+('2027-08-07 21:30:00', '2027-08-07 22:30:00', (SELECT id FROM artists WHERE name = 'Whitechapel'), 4),
+('2027-08-07 23:00:00', '2027-08-08 00:15:00', (SELECT id FROM artists WHERE name = 'Imperial Triumphant'), 4),
+('2027-08-08 00:45:00', '2027-08-08 02:00:00', (SELECT id FROM artists WHERE name = 'Igorrr'), 4);
 
 -- =====================================================================
 -- PEDIDOS, TICKETS Y CAMPINGS DE EJEMPLO
