@@ -56,6 +56,7 @@ public class EmailService {
         context.setVariable("firstName", firstName);
         context.setVariable("activationUrl", confirmationUrl);
         context.setVariable("logoUrl", LOGO_SRC);
+        context.setVariable("privacyUrl", frontendUrl + "/privacy");
 
         // 3. CProcesar el archivo HTML
         // "email-activation" debe ser el nombre del archivo .html en src/main/resources/templates/
@@ -95,6 +96,7 @@ public class EmailService {
         context.setVariable("firstName", firstName);
         context.setVariable("confirmationUrl", confirmationUrl);
         context.setVariable("logoUrl", LOGO_SRC);
+        context.setVariable("privacyUrl", frontendUrl + "/privacy");
 
         String body = templateEngine.process("email-change", context);
 
@@ -131,6 +133,7 @@ public class EmailService {
         context.setVariable("firstName", firstName);
         context.setVariable("orderId", order.getId());
         context.setVariable("logoUrl", LOGO_SRC);
+        context.setVariable("privacyUrl", frontendUrl + "/privacy");
 
         // 2. Procesar el template HTML
         String body = templateEngine.process("email-order-confirmation", context);
