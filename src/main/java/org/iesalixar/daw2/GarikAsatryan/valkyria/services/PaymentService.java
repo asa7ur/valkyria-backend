@@ -11,14 +11,17 @@ import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.iesalixar.daw2.GarikAsatryan.valkyria.config.LocaleConfig;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -46,6 +49,7 @@ public class PaymentService {
     // Inyección de dependencias mediante constructor (Lombok @RequiredArgsConstructor)
     private final OrderService orderService;
     private final ObjectMapper objectMapper; // Para parsear JSON de Stripe
+    private final MessageSource messageSource;
 
     // Credenciales de Stripe desde application.properties
     @Value("${stripe.secret.key}")
@@ -86,9 +90,15 @@ public class PaymentService {
         long amountInCents = order.getTotalPrice().movePointRight(2).longValue();
         logger.debug("Precio convertido para Stripe: {} céntimos", amountInCents);
 
+        // La página de pago y el nombre del producto van en el idioma en que se hizo el pedido
+        Locale locale = LocaleConfig.supportedOrDefault(order.getLanguage());
+        String itemName = messageSource.getMessage("msg.order.checkout.item-name",
+                new Object[]{String.valueOf(order.getId())}, locale);
+
         SessionCreateParams params = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setLocale(Locale.ENGLISH.equals(locale) ? SessionCreateParams.Locale.EN : SessionCreateParams.Locale.ES)
 
                 // ID de referencia para identificar el pedido en el webhook
                 .setClientReferenceId(order.getId().toString())
@@ -109,7 +119,7 @@ public class PaymentService {
                                                 .setUnitAmount(amountInCents)
                                                 .setProductData(
                                                         SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                                .setName("Pedido Valkyria #" + order.getId())
+                                                                .setName(itemName)
                                                                 .build()
                                                 )
                                                 .build()

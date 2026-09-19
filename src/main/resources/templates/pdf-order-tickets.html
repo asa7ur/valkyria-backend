@@ -197,7 +197,7 @@
             <tr>
                 <td class="ticket-info">
                     <div class="ticket-type" th:text="#{msg.pdf.ticket-label}">Entrada Oficial</div>
-                    <span class="event-name" th:text="${ticket.ticketType.name}">ABONO GENERAL</span>
+                    <span class="event-name" th:text="${ticket.ticketType.localizedName(#locale)}">ABONO GENERAL</span>
                     <div class="attendee">
                         <strong th:text="#{msg.pdf.attendee}">Asistente:</strong> <span th:text="${ticket.firstName + ' ' + ticket.lastName}">Nombre</span>
                     </div>
@@ -217,7 +217,7 @@
                 <tr>
                     <td class="ticket-info">
                         <div class="ticket-type" style="color: #27ae60;" th:text="#{msg.pdf.camping-label}">Zona de Descanso</div>
-                        <span class="event-name" th:text="${camping.campingType.name}">ZONA CONFORT</span>
+                        <span class="event-name" th:text="${camping.campingType.localizedName(#locale)}">ZONA CONFORT</span>
                         <div class="attendee">
                             <strong th:text="#{msg.pdf.camping-holder}">Titular:</strong> <span th:text="${camping.firstName + ' ' + camping.lastName}">Nombre</span>
                         </div>
