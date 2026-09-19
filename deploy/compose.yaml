@@ -12,7 +12,11 @@
 #
 # Variables del .env:
 #   PUBLIC_URL        URL pública de la web, sin barra final (p. ej. https://valkyriafest.es). Obligatoria
+#   VALKYRIA_VERSION  versión desplegada (p. ej. 1.6.0). La escribe deploy.sh; no editarla a mano
 #   DB_ROOT_PASSWORD, DB_DATABASE, DB_USER, DB_USER_PASSWORD
+#
+# Las imágenes del backend y del frontend no se construyen aquí: las publica GitHub Actions en GHCR
+# (ghcr.io/asa7ur/...) al crear el tag de cada versión.
 #
 # Los puertos 4200 y 8080 solo escuchan en 127.0.0.1: desde fuera únicamente se llega a través del nginx
 # de esta misma máquina.
@@ -29,7 +33,7 @@ x-logging: &logging
 
 services:
   frontend:
-    build: ./frontend/valkyria-frontend
+    image: ghcr.io/asa7ur/valkyria-frontend:${VALKYRIA_VERSION:?Falta VALKYRIA_VERSION en el .env}
     container_name: frontend
     ports:
       - "127.0.0.1:4200:80"
@@ -37,7 +41,7 @@ services:
     logging: *logging
 
   backend:
-    build: ./backend/valkyria
+    image: ghcr.io/asa7ur/valkyria-backend:${VALKYRIA_VERSION:?Falta VALKYRIA_VERSION en el .env}
     container_name: backend
     env_file:
       - ./backend.env

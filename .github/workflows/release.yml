@@ -1,0 +1,127 @@
+# Release y despliegue.
+#  - Al crear un tag vX.Y.Z: construye la imagen del backend, la publica en GHCR
+#    (ghcr.io/asa7ur/valkyria-backend:X.Y.Z) y despliega esa versión en el VPS.
+#  - A mano (Actions > Release > Run workflow): despliega una versión ya publicada, p. ej. para volver atrás.
+#
+# El despliegue entra por SSH con una clave que el VPS solo acepta para ejecutar deploy-remote.sh (forced command):
+# aunque se filtrara, solo serviría para desplegar una versión existente.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a desplegar (p. ej. v1.6.0)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Imagen Docker
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write   # publicar la imagen en GHCR
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Comprobar que el tag coincide con la versión del pom.xml
+        run: |
+          # La del proyecto es la única <version> con 4 espacios de sangría (la del parent lleva 8)
+          version=$(grep -m1 -oP '^    <version>\K[^<]+' pom.xml)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::El tag $GITHUB_REF_NAME no coincide con la versión del pom.xml ($version)"
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: type=semver,pattern={{version}}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64   # el VPS es x86
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Desplegar en producción
+    needs: image
+    # También a mano, cuando el job de la imagen no se ejecuta
+    if: always() && (needs.image.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://valkyriafest.es
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false   # nunca cortar un despliegue a medias
+
+    env:
+      VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+
+    steps:
+      - name: Comprobar el formato de la versión
+        run: |
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Versión no válida: $VERSION (formato vX.Y.Z)"
+            exit 1
+          fi
+
+      # El frontend publica su imagen en su propio repo y puede terminar después que el backend
+      - name: Esperar a que estén publicadas las dos imágenes
+        run: |
+          for image in valkyria-backend valkyria-frontend; do
+            ref="ghcr.io/${{ github.repository_owner }}/$image:${VERSION#v}"
+            for attempt in $(seq 1 40); do
+              if docker manifest inspect "$ref" > /dev/null 2>&1; then
+                echo "Disponible: $ref"
+                continue 2
+              fi
+              echo "Esperando a $ref ($attempt/40)..."
+              sleep 30
+            done
+            echo "::error::$ref no está publicada o no es pública"
+            exit 1
+          done
+
+      - name: Desplegar por SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # El único "comando" que se envía es la versión: el VPS ejecuta siempre deploy-remote.sh
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}" "$VERSION"
+
+      - name: Comprobar que la web responde
+        run: |
+          curl -fsS -o /dev/null --retry 10 --retry-delay 6 --retry-all-errors https://valkyriafest.es/
+          curl -fsS -o /dev/null --retry 10 --retry-delay 6 --retry-all-errors https://valkyriafest.es/api/v1/ticket-types
+          echo "valkyriafest.es responde con la versión $VERSION"
