@@ -7,6 +7,7 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Order;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.entities.Ticket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -14,6 +15,7 @@ import org.thymeleaf.context.Context;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -24,14 +26,19 @@ public class PdfGeneratorService {
 
     private final QrCodeService qrCodeService;
     private final TemplateEngine templateEngine;
+    private final MessageSource messageSource;
 
-    public byte[] generateOrderPdf(Order order) throws Exception {
-        logger.info("Generando PDF profesional para pedido #{}", order.getId());
+    /**
+     * @param locale idioma de los textos y de la fecha (no se usa el del sistema: el PDF también se genera
+     *               en segundo plano, fuera de cualquier petición)
+     */
+    public byte[] generateOrderPdf(Order order, Locale locale) throws Exception {
+        logger.info("Generando PDF profesional para pedido #{} ({})", order.getId(), locale.getLanguage());
 
         // 1. Preparar datos
         String customerName = (order.getUser() != null)
                 ? order.getUser().getFirstName() + " " + order.getUser().getLastName()
-                : "Invitado (" + order.getGuestEmail() + ")";
+                : messageSource.getMessage("msg.pdf.guest-purchaser", new Object[]{order.getGuestEmail()}, locale);
 
         Map<String, String> qrMap = new HashMap<>();
 
@@ -46,7 +53,7 @@ public class PdfGeneratorService {
         }
 
         // 2. Contexto Thymeleaf
-        Context context = new Context();
+        Context context = new Context(locale);
         context.setVariable("order", order);
         context.setVariable("customerName", customerName);
         context.setVariable("qrMap", qrMap);

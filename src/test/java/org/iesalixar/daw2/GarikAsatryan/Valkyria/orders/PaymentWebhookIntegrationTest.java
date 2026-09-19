@@ -2,7 +2,13 @@ package org.iesalixar.daw2.GarikAsatryan.Valkyria.orders;
 
 import com.stripe.Stripe;
 import com.stripe.net.Webhook;
+import jakarta.mail.BodyPart;
+import jakarta.mail.MessagingException;
+import jakarta.mail.Multipart;
 import jakarta.mail.internet.MimeMessage;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.iesalixar.daw2.GarikAsatryan.Valkyria.AbstractIntegrationTest;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.OrderCreateDTO;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.dtos.TicketCreateDTO;
@@ -15,15 +21,22 @@ import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderExpirationJob;
 import org.iesalixar.daw2.GarikAsatryan.valkyria.services.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -93,6 +106,40 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
         verify(mailSender, timeout(10_000)).send(any(MimeMessage.class));
         verify(mailSender, after(1_000).times(1)).send(any(MimeMessage.class));
         assertThat(stock(type)).isEqualTo(3);
+    }
+
+    /**
+     * El email y el PDF se generan en segundo plano al llegar el webhook (sin petición del usuario):
+     * deben salir en el idioma que tenía la web al comprar, no en el del sistema.
+     */
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            en | Order Confirmation #     | Order ID:      | Attendee:  | Asistente: | MMMM d, yyyy
+            es | Confirmación de Pedido # | ID del pedido: | Asistente: | Attendee:  | d 'de' MMMM 'de' yyyy
+            """)
+    void completedEvent_sendsEmailAndPdfInTheLanguageOfTheOrder(String language, String subjectPrefix, String emailText,
+                                                                 String pdfText, String otherLanguagePdfText,
+                                                                 String datePattern) throws Exception {
+        TicketType type = newTicketType(5);
+        Long orderId = pendingOrder(type, 1, Locale.of(language));
+
+        sendEvent("checkout.session.completed", orderId).andExpect(status().isOk());
+
+        ArgumentCaptor<MimeMessage> sent = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender, timeout(10_000).atLeastOnce()).send(sent.capture());
+        MimeMessage email = sent.getAllValues().stream()
+                .filter(message -> subject(message).endsWith("#" + orderId + " - Valkyria Festival"))
+                .findFirst().orElseThrow();
+
+        assertThat(email.getSubject()).startsWith(subjectPrefix);
+        assertThat(htmlBody(email)).contains(emailText);
+
+        // p. ej. "September 19, 2026" / "19 de septiembre de 2026"
+        String orderDate = orderRepository.findById(orderId).orElseThrow().getOrderDate().toLocalDate()
+                .format(DateTimeFormatter.ofPattern(datePattern, Locale.of(language)));
+        assertThat(pdfText(email))
+                .contains(pdfText, orderDate, "info@valkyriafest.es")
+                .doesNotContain(otherLanguagePdfText);
     }
 
     @Test
@@ -187,6 +234,60 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
                 {"id":"evt_%s","object":"event","api_version":"%s","type":"%s",
                  "data":{"object":{"id":"cs_test_%s","object":"checkout.session","client_reference_id":"%d"}}}"""
                 .formatted(UUID.randomUUID(), Stripe.API_VERSION, eventType, UUID.randomUUID(), orderId);
+    }
+
+    // Pedido hecho con la web en ese idioma (el que llegaría en Accept-Language)
+    private Long pendingOrder(TicketType type, int quantity, Locale webLanguage) {
+        LocaleContextHolder.setLocale(webLanguage);
+        try {
+            return pendingOrder(type, quantity);
+        } finally {
+            LocaleContextHolder.resetLocaleContext();
+        }
+    }
+
+    private static String subject(MimeMessage message) {
+        try {
+            return message.getSubject();
+        } catch (MessagingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static String htmlBody(MimeMessage message) throws Exception {
+        for (BodyPart part : parts(message.getContent())) {
+            if (part.getFileName() == null && part.getContent() instanceof String html) {
+                return html;
+            }
+        }
+        throw new AssertionError("El email no tiene cuerpo HTML");
+    }
+
+    private static String pdfText(MimeMessage message) throws Exception {
+        for (BodyPart part : parts(message.getContent())) {
+            if (part.getFileName() != null && part.getFileName().endsWith(".pdf")) {
+                try (PDDocument document = Loader.loadPDF(part.getInputStream().readAllBytes())) {
+                    return new PDFTextStripper().getText(document);
+                }
+            }
+        }
+        throw new AssertionError("El email no lleva el PDF adjunto");
+    }
+
+    // Partes "hoja" de un email multipart (el cuerpo HTML y los adjuntos)
+    private static List<BodyPart> parts(Object content) throws Exception {
+        List<BodyPart> result = new ArrayList<>();
+        if (content instanceof Multipart multipart) {
+            for (int i = 0; i < multipart.getCount(); i++) {
+                BodyPart part = multipart.getBodyPart(i);
+                if (part.getContent() instanceof Multipart nested) {
+                    result.addAll(parts(nested));
+                } else {
+                    result.add(part);
+                }
+            }
+        }
+        return result;
     }
 
     private Long pendingOrder(TicketType type, int quantity) {

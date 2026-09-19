@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -86,18 +86,18 @@
                     para la batalla musical.</p>
 
                 <div class="order-info">
-                    <p><strong>ID del Pedido:</strong> <span th:text="${orderId}">#0001</span></p>
+                    <p><strong th:text="#{msg.email.order.id-label}">ID del pedido:</strong> <span th:text="${orderId}">#0001</span></p>
                     <p th:text="#{msg.email.order.p2}">Tus entradas están adjuntas a este correo en formato PDF.</p>
                 </div>
 
-                <p class="attachment-notice">Recuerda llevar tu código QR (digital o impreso) para acceder al
-                    recinto.</p>
+                <p class="attachment-notice" th:text="#{msg.email.order.qr-reminder}">Recuerda llevar tu código QR
+                    (digital o impreso) para acceder al recinto.</p>
             </td>
         </tr>
     </table>
     <div class="footer">
-        <p>© 2026 Valkyria Festival. Todos los derechos reservados.</p>
-        <p>Sevilla, España | <a href="#" style="color: #999;">Política de Privacidad</a></p>
+        <p th:text="#{msg.common.rights}">© 2026 Valkyria Festival. Todos los derechos reservados.</p>
+        <p><span th:text="#{msg.common.city}">Sevilla, España</span> | <a href="#" style="color: #999;" th:text="#{msg.common.privacy}">Política de Privacidad</a></p>
     </div>
 </div>
 </body>

@@ -38,6 +38,10 @@ public class Order {
     @Column(name = "guest_email")
     private String guestEmail;
 
+    // Idioma en el que se envían el email de confirmación y el PDF ("es" o "en")
+    @Column(name = "language", nullable = false, length = 5)
+    private String language = "es";
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;

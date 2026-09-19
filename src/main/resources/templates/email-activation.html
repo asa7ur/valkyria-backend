@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -96,14 +96,14 @@
                         CUENTA</a>
                 </div>
 
-                <p style="font-size: 13px; color: #888;">Si no has creado una cuenta en nuestro sitio, puedes ignorar
-                    este mensaje de forma segura.</p>
+                <p style="font-size: 13px; color: #888;" th:text="#{msg.email.activation.ignore}">Si no has creado
+                    una cuenta en nuestro sitio, puedes ignorar este mensaje de forma segura.</p>
             </td>
         </tr>
     </table>
     <div class="footer">
-        <p>© 2026 Valkyria Festival. Todos los derechos reservados.</p>
-        <p>Sevilla, España | <a href="#" style="color: #999;">Política de Privacidad</a></p>
+        <p th:text="#{msg.common.rights}">© 2026 Valkyria Festival. Todos los derechos reservados.</p>
+        <p><span th:text="#{msg.common.city}">Sevilla, España</span> | <a href="#" style="color: #999;" th:text="#{msg.common.privacy}">Política de Privacidad</a></p>
     </div>
 </div>
 </body>
