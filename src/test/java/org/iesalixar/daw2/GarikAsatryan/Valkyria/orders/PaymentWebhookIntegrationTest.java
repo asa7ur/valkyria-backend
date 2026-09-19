@@ -121,6 +121,8 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
                                                                  String pdfText, String otherLanguagePdfText,
                                                                  String datePattern) throws Exception {
         TicketType type = newTicketType(5);
+        type.setNameEn("Pass " + type.getName());
+        ticketTypeRepository.save(type);
         Long orderId = pendingOrder(type, 1, Locale.of(language));
 
         sendEvent("checkout.session.completed", orderId).andExpect(status().isOk());
@@ -137,9 +139,18 @@ class PaymentWebhookIntegrationTest extends AbstractIntegrationTest {
         // p. ej. "September 19, 2026" / "19 de septiembre de 2026"
         String orderDate = orderRepository.findById(orderId).orElseThrow().getOrderDate().toLocalDate()
                 .format(DateTimeFormatter.ofPattern(datePattern, Locale.of(language)));
-        assertThat(pdfText(email))
+        String pdf = pdfText(email);
+        assertThat(pdf)
                 .contains(pdfText, orderDate, "info@valkyriafest.es")
                 .doesNotContain(otherLanguagePdfText);
+
+        // Nombre del tipo de entrada traducido (en el PDF va en mayúsculas por CSS)
+        String englishName = type.getNameEn().toLowerCase();
+        if ("en".equals(language)) {
+            assertThat(pdf.toLowerCase()).contains(englishName);
+        } else {
+            assertThat(pdf.toLowerCase()).contains(type.getName().toLowerCase()).doesNotContain(englishName);
+        }
     }
 
     @Test

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 
 @Entity
 @Table(name = "ticket_types")
@@ -30,4 +31,10 @@ public class TicketType {
 
     @Column(name = "stock_available", nullable = false)
     private Integer stockAvailable;
+
+    /** Nombre en inglés si el idioma es inglés y hay traducción; si no, el nombre en español. */
+    public String localizedName(Locale locale) {
+        boolean english = Locale.ENGLISH.getLanguage().equals(locale.getLanguage());
+        return english && nameEn != null && !nameEn.isBlank() ? nameEn : name;
+    }
 }
