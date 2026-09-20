@@ -10,7 +10,9 @@ if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "ERROR: versión no válida: $VERSION (formato vX.Y.Z)" >&2
   exit 1
 fi
-REPOS=(backend/valkyria frontend/valkyria-frontend)
+BACKEND_REPO=backend/valkyria-backend
+FRONTEND_REPO=frontend/valkyria-frontend
+REPOS=("$BACKEND_REPO" "$FRONTEND_REPO")
 
 # Lo usa compose.yaml para elegir las imágenes (ghcr.io/...:X.Y.Z)
 export VALKYRIA_VERSION="${VERSION#v}"
@@ -30,15 +32,15 @@ for repo in "${REPOS[@]}"; do
 done
 
 # La configuración de compose viaja con cada versión del backend
-if ! cmp -s backend/valkyria/deploy/compose.yaml compose.yaml; then
+if ! cmp -s "$BACKEND_REPO/deploy/compose.yaml" compose.yaml; then
   echo "==> compose.yaml actualizado desde el repo"
-  cp backend/valkyria/deploy/compose.yaml compose.yaml
+  cp "$BACKEND_REPO/deploy/compose.yaml" compose.yaml
 fi
 # Los scripts no se sustituyen solos (deploy.sh se está ejecutando ahora mismo)
 for script in deploy.sh backup.sh deploy-remote.sh; do
-  if ! cmp -s "backend/valkyria/deploy/$script" "$script"; then
+  if ! cmp -s "$BACKEND_REPO/deploy/$script" "$script"; then
     echo "AVISO: $script ha cambiado en el repo. Actualízalo al terminar:"
-    echo "       cp backend/valkyria/deploy/$script $script"
+    echo "       cp $BACKEND_REPO/deploy/$script $script"
   fi
 done
 
