@@ -10,7 +10,7 @@
     </parent>
     <groupId>org.iesalixar.daw2.GarikAsatryan</groupId>
     <artifactId>valkyria-backend</artifactId>
-    <version>1.9.0-SNAPSHOT</version>
+    <version>1.9.0</version>
     <name>valkyria-backend</name>
     <description>Garik Asatryan - API del festival Valkyria</description>
     <url/>
