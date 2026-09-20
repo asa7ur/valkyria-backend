@@ -7,7 +7,7 @@
 #   backend.env                 secretos del backend (permisos 600)
 #   backend/certs/              keystore del JWT
 #   data/uploads/               imágenes subidas
-#   backend/valkyria/           clon del repo del backend
+#   backend/valkyria-backend/   clon del repo del backend
 #   frontend/valkyria-frontend/ clon del repo del frontend
 #
 # Variables del .env:
